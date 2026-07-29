@@ -1,268 +1,257 @@
 <div>
 
-    {{-- ═══ GREETING + PAGE TITLE ═══ --}}
-    <div class="mb-6">
-        <div class="text-[10px] font-bold text-white/30 uppercase tracking-[0.18em] mb-1">
-            @php
-                $hour = (int) date('H');
-                $greeting = $hour < 12 ? 'Good Morning' : ($hour < 17 ? 'Good Afternoon' : 'Good Evening');
-            @endphp
-            {{ $greeting }}, {{ auth()->user()->name }}
+    {{-- ═══════════════════════════════════════════════════════
+         DESKTOP VIEW  (lg+): original PC layout
+         ═══════════════════════════════════════════════════════ --}}
+
+    {{-- ===== PAGE HEADER ===== --}}
+    <div class="flex items-start justify-between gap-4 mb-6">
+        <div>
+            <h2 class="text-[22px] font-bold text-[#111111] leading-tight">Business Command Center</h2>
+            <p class="text-[13px] text-[#888888] mt-0.5">Real-time overview of your fashion ecosystem operations.</p>
         </div>
-        <h1 class="text-[26px] font-black text-white tracking-tight leading-tight">Operations Overview</h1>
+        <div class="flex items-center gap-2 flex-shrink-0">
+            <button class="flex items-center gap-1.5 px-3.5 py-2 text-[12px] font-semibold text-[#444444] bg-white border border-[#E0E0E0] rounded-lg hover:bg-[#F5F5F5] transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Last 24 Hours
+            </button>
+            <button class="flex items-center gap-1.5 px-3.5 py-2 text-[12px] font-semibold text-white bg-[#111111] hover:bg-[#333333] rounded-lg transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export Report
+            </button>
+        </div>
     </div>
 
-    {{-- ═══ MONTHLY SALES HERO CARD ═══ --}}
-    @php
-        $monthlyTarget = 100000;
-        $targetPct = $monthlyTarget > 0 ? min(100, round($monthlyRevenue / $monthlyTarget * 100)) : 0;
-    @endphp
-    <div class="bg-white rounded-2xl p-5 mb-3 card-press">
-        <div class="flex items-center justify-between mb-1">
-            <span class="text-[10px] font-bold text-[#888888] uppercase tracking-[0.12em]">Monthly Sales</span>
-            <svg class="w-4 h-4 text-[#AAAAAA]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-            </svg>
-        </div>
-        <div class="text-[36px] font-black text-[#111111] tracking-tight leading-none mt-2 mb-4 tabular-nums">
-            ₱{{ number_format($monthlyRevenue) }}
-        </div>
-        <div class="w-full bg-[#F0F0F0] rounded-full h-[5px] mb-2">
-            <div class="bg-[#111111] h-[5px] rounded-full progress-bar" style="width: {{ $targetPct }}%"></div>
-        </div>
-        <div class="text-[12px] text-[#888888] font-medium">{{ $targetPct }}% of monthly target reached</div>
-    </div>
-
-    {{-- ═══ TODAY'S SALES + NET PROFIT ═══ --}}
-    <div class="grid grid-cols-2 gap-3 mb-3">
+    {{-- ===== KPI ROW 1: Main Financial Metrics ===== --}}
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
 
         {{-- Today's Sales --}}
-        <div class="bg-white rounded-2xl p-4 card-press">
-            <div class="text-[10px] font-bold text-[#888888] uppercase tracking-[0.12em] mb-2">Today's Sales</div>
-            <div class="text-[22px] font-black text-[#111111] tracking-tight leading-none tabular-nums mb-1.5">
-                ₱{{ number_format($todayIncome) }}
+        <div class="bg-white rounded-xl border border-[#E8E8E8] p-5">
+            <div class="flex items-start justify-between mb-3">
+                <div class="w-9 h-9 bg-[#F5F5F5] rounded-lg flex items-center justify-center">
+                    <svg class="w-4 h-4 text-[#666666]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                </div>
+                <span class="text-[11px] font-bold text-emerald-600">+{{ number_format($todayIncome > 0 ? 12.5 : 0, 1) }}%</span>
             </div>
-            <div class="flex items-center gap-1 text-[11px] font-bold {{ $todayIncome > 0 ? 'text-emerald-600' : 'text-[#AAAAAA]' }}">
-                @if($todayIncome > 0)
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
-                        <path d="M7 17l9.2-9.2M17 17V7H7"/>
-                    </svg>
-                    12.5%
-                @else
-                    No sales today
-                @endif
+            <div class="text-[18px] font-bold text-[#111111] tabular-nums">₱{{ number_format($todayIncome, 2) }}</div>
+            <div class="text-[12px] text-[#888888] mt-0.5">Today's Sales</div>
+        </div>
+
+        {{-- Monthly Sales --}}
+        <div class="bg-white rounded-xl border border-[#E8E8E8] p-5">
+            <div class="flex items-start justify-between mb-3">
+                <div class="w-9 h-9 bg-[#F5F5F5] rounded-lg flex items-center justify-center">
+                    <svg class="w-4 h-4 text-[#666666]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                </div>
+                <span class="text-[11px] font-bold text-emerald-600">+8.2%</span>
             </div>
+            <div class="text-[18px] font-bold text-[#111111] tabular-nums">₱{{ number_format($monthlyRevenue, 2) }}</div>
+            <div class="text-[12px] text-[#888888] mt-0.5">Monthly Sales</div>
         </div>
 
         {{-- Net Profit --}}
-        <div class="bg-white rounded-2xl p-4 card-press">
-            <div class="text-[10px] font-bold text-[#888888] uppercase tracking-[0.12em] mb-2">Net Profit</div>
-            <div class="text-[22px] font-black {{ $monthlyProfit >= 0 ? 'text-[#111111]' : 'text-red-600' }} tracking-tight leading-none tabular-nums mb-1.5">
-                ₱{{ number_format(abs($monthlyProfit)) }}
+        <div class="bg-white rounded-xl border border-[#E8E8E8] p-5">
+            <div class="flex items-start justify-between mb-3">
+                <div class="w-9 h-9 bg-[#F5F5F5] rounded-lg flex items-center justify-center">
+                    <svg class="w-4 h-4 text-[#666666]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                </div>
+                <span class="text-[11px] font-bold {{ $monthlyProfit >= 0 ? 'text-emerald-600' : 'text-red-500' }}">
+                    {{ $monthlyProfit >= 0 ? '+' : '-' }}{{ number_format(abs($monthlyProfit / max($monthlyRevenue, 1) * 100), 1) }}%
+                </span>
             </div>
-            @if($monthlyRevenue > 0)
-                <div class="text-[11px] font-semibold text-[#888888]">
-                    Margin: {{ round($monthlyProfit / max($monthlyRevenue,1) * 100) }}%
+            <div class="text-[18px] font-bold {{ $monthlyProfit >= 0 ? 'text-[#111111]' : 'text-red-600' }} tabular-nums">₱{{ number_format(abs($monthlyProfit), 2) }}</div>
+            <div class="text-[12px] text-[#888888] mt-0.5">Net Profit (MTD)</div>
+        </div>
+
+        {{-- Cash Available --}}
+        <div class="bg-white rounded-xl border border-[#E8E8E8] p-5">
+            <div class="flex items-start justify-between mb-3">
+                <div class="w-9 h-9 bg-[#F5F5F5] rounded-lg flex items-center justify-center">
+                    <svg class="w-4 h-4 text-[#666666]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
-            @endif
+            </div>
+            <div class="text-[18px] font-bold text-[#111111] tabular-nums">₱{{ number_format($currentCash, 2) }}</div>
+            <div class="text-[12px] text-[#888888] mt-0.5">Cash Available</div>
         </div>
     </div>
 
-    {{-- ═══ STATS ROW ═══ --}}
-    <div class="grid grid-cols-3 gap-3 mb-5">
+    {{-- ===== KPI ROW 2: Operational Metrics ===== --}}
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
 
-        <div class="bg-white/10 rounded-2xl p-3.5 text-center">
-            <div class="text-[20px] font-black text-white tabular-nums">{{ $pendingOrdersCount }}</div>
-            <div class="text-[10px] font-semibold text-white/40 mt-0.5 uppercase tracking-wide">Pending</div>
+        {{-- Inventory Value --}}
+        <div class="bg-white rounded-xl border border-[#E8E8E8] p-5">
+            <div class="text-[18px] font-bold text-[#111111] tabular-nums mb-1">₱{{ number_format($inventoryValue, 0) }}</div>
+            <div class="text-[12px] text-[#888888] mb-3">Inventory Value</div>
+            <div class="w-full bg-[#F0F0F0] rounded-full h-1.5">
+                <div class="bg-[#111111] h-1.5 rounded-full" style="width: 75%"></div>
+            </div>
+            <div class="text-[10px] text-[#AAAAAA] mt-1.5">75% Warehouse capacity used</div>
         </div>
 
-        <div class="bg-white/10 rounded-2xl p-3.5 text-center">
-            <div class="text-[20px] font-black {{ $lowStockCount > 0 ? 'text-red-400' : 'text-white' }} tabular-nums">{{ $lowStockCount }}</div>
-            <div class="text-[10px] font-semibold text-white/40 mt-0.5 uppercase tracking-wide">Low Stock</div>
-        </div>
-
-        <div class="bg-white/10 rounded-2xl p-3.5 text-center">
-            <div class="text-[20px] font-black text-white tabular-nums">{{ $ordersToFulfilCount }}</div>
-            <div class="text-[10px] font-semibold text-white/40 mt-0.5 uppercase tracking-wide">To Ship</div>
-        </div>
-
-    </div>
-
-    {{-- ═══ QUICK ACTIONS ═══ --}}
-    <div class="mb-5">
-        <div class="text-[10px] font-bold text-white/30 uppercase tracking-[0.18em] mb-3">Quick Actions</div>
-        <div class="grid grid-cols-2 gap-3">
-            <a href="{{ route('orders.create') }}"
-               class="flex items-center justify-center gap-2 bg-white text-[#111111] rounded-2xl py-4 font-bold text-[13px] transition-all active:scale-95">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                    <path d="M12 5v14M5 12h14"/>
-                </svg>
-                New Order
-            </a>
-            <a href="{{ route('products.create') }}"
-               class="flex items-center justify-center gap-2 bg-white/10 text-white border border-white/10 rounded-2xl py-4 font-bold text-[13px] transition-all active:scale-95">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                    <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                </svg>
-                Add Product
-            </a>
-        </div>
-    </div>
-
-    {{-- ═══ CRITICAL ALERTS ═══ --}}
-    <div class="mb-5">
-        <div class="flex items-center justify-between mb-3">
-            <div class="text-[10px] font-bold text-white/30 uppercase tracking-[0.18em]">Critical Alerts</div>
-            @php $totalAlerts = $lowStockItems->count() + ($pendingOrdersCount > 0 ? 1 : 0); @endphp
-            @if($totalAlerts > 0)
-                <span class="text-[10px] font-bold text-white/30">{{ $totalAlerts }} Action Items</span>
-            @endif
-        </div>
-
-        <div class="space-y-2">
-
-            {{-- Low Stock Alerts --}}
-            @forelse($lowStockItems as $inv)
-            <a href="{{ route('inventory.index') }}"
-               class="bg-white rounded-2xl p-4 flex items-center gap-3 card-press block">
-                <div class="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
-                    <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-                        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                    </svg>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="text-[13px] font-bold text-[#111111] truncate">
-                        Low Stock: {{ $inv->product->product_name }}
-                        @if($inv->product->size) ({{ $inv->product->size }}) @endif
-                    </div>
-                    <div class="text-[11px] text-[#888888] mt-0.5">
-                        Only {{ $inv->current_stock }} units remaining in stock
-                    </div>
-                </div>
-                <svg class="w-4 h-4 text-[#CCCCCC] flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path d="M9 18l6-6-6-6"/>
-                </svg>
-            </a>
-            @empty
-                {{-- No low stock: show green check --}}
-            @endforelse
-
-            {{-- Pending Orders Alert --}}
+        {{-- Pending Orders --}}
+        <div class="bg-white rounded-xl border border-[#E8E8E8] p-5">
+            <div class="text-[18px] font-bold text-[#111111] tabular-nums mb-1">{{ $pendingOrdersCount }}</div>
+            <div class="text-[12px] text-[#888888] mb-2">Pending Orders</div>
             @if($pendingOrdersCount > 0)
-            <a href="{{ route('orders.index') }}"
-               class="bg-white rounded-2xl p-4 flex items-center gap-3 card-press block">
-                <div class="w-10 h-10 rounded-xl bg-[#F5F5F5] flex items-center justify-center flex-shrink-0">
-                    <svg class="w-5 h-5 text-[#555555]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-                    </svg>
+                <div class="flex items-center gap-1.5 text-[11px] font-semibold text-red-500">
+                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                    {{ $pendingOrdersCount }} need attention
                 </div>
-                <div class="flex-1 min-w-0">
-                    <div class="text-[13px] font-bold text-[#111111]">{{ $pendingOrdersCount }} Pending Orders</div>
-                    <div class="text-[11px] text-[#888888] mt-0.5">Require confirmation or fulfillment</div>
-                </div>
-                <svg class="w-4 h-4 text-[#CCCCCC] flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path d="M9 18l6-6-6-6"/>
-                </svg>
-            </a>
+            @else
+                <div class="text-[11px] text-emerald-600 font-semibold">All orders processed</div>
             @endif
+        </div>
 
-            {{-- All clear --}}
-            @if($lowStockItems->count() === 0 && $pendingOrdersCount === 0)
-            <div class="bg-white rounded-2xl p-5 flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
-                    <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                        <path d="M5 13l4 4L19 7"/>
-                    </svg>
-                </div>
-                <div>
-                    <div class="text-[13px] font-bold text-[#111111]">All systems operational</div>
-                    <div class="text-[11px] text-[#888888]">No critical alerts at this time</div>
-                </div>
+        {{-- Orders to Fulfil --}}
+        <div class="bg-white rounded-xl border border-[#E8E8E8] p-5">
+            <div class="text-[18px] font-bold text-[#111111] tabular-nums mb-1">{{ $ordersToFulfilCount }}</div>
+            <div class="text-[12px] text-[#888888] mb-2">Orders to Fulfil</div>
+            <div class="flex items-center gap-1.5 text-[11px] text-[#888888]">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                Ready to process
             </div>
+        </div>
+
+        {{-- Low Stock Items --}}
+        <div class="bg-white rounded-xl border border-[#E8E8E8] p-5">
+            <div class="text-[18px] font-bold {{ $lowStockCount > 0 ? 'text-red-600' : 'text-[#111111]' }} tabular-nums mb-1">{{ $lowStockCount }}</div>
+            <div class="text-[12px] text-[#888888] mb-2">Low Stock Items</div>
+            @if($lowStockCount > 0)
+                <a href="{{ route('inventory.index') }}" class="text-[11px] font-semibold text-red-500 hover:text-red-700 transition-colors">
+                    View inventory →
+                </a>
+            @else
+                <div class="text-[11px] text-emerald-600 font-semibold">Stock levels healthy</div>
             @endif
         </div>
     </div>
 
-    {{-- ═══ RECENT ORDERS ═══ --}}
-    <div>
-        <div class="flex items-center justify-between mb-3">
-            <div class="text-[10px] font-bold text-white/30 uppercase tracking-[0.18em]">Recent Orders</div>
-            <a href="{{ route('orders.index') }}" class="text-[11px] font-bold text-white/30 hover:text-white/60 transition-colors">View All →</a>
-        </div>
+    {{-- ===== 2-COLUMN: Critical Alerts + Quick Actions | Recent Activity ===== --}}
+    <div class="grid grid-cols-1 xl:grid-cols-5 gap-5">
 
-        <div class="space-y-2">
-            @forelse($recentLogs->take(5) as $log)
-            @php
-                // Map activity logs to order context when possible
-            @endphp
-            @empty
-            @endforelse
+        {{-- LEFT: Critical Alerts + Quick Actions --}}
+        <div class="xl:col-span-2 space-y-4">
 
-            {{-- Use recentOrders if available, else fallback --}}
-            @php
-                $displayOrders = \App\Models\Order::with('items.product')
-                    ->latest()->take(4)->get();
-            @endphp
-            @forelse($displayOrders as $order)
-            @php
-                $statusMap = [
-                    'pending'    => ['dot' => 'bg-orange-500', 'text' => 'text-orange-500',  'label' => 'Pending'],
-                    'confirmed'  => ['dot' => 'bg-blue-500',   'text' => 'text-blue-500',    'label' => 'Confirmed'],
-                    'processing' => ['dot' => 'bg-blue-500',   'text' => 'text-blue-500',    'label' => 'Processing'],
-                    'packed'     => ['dot' => 'bg-violet-500', 'text' => 'text-violet-500',  'label' => 'Packed'],
-                    'shipped'    => ['dot' => 'bg-gray-400',   'text' => 'text-gray-500',    'label' => 'Shipped'],
-                    'completed'  => ['dot' => 'bg-emerald-500','text' => 'text-emerald-600', 'label' => 'Completed'],
-                    'cancelled'  => ['dot' => 'bg-red-500',    'text' => 'text-red-500',     'label' => 'Cancelled'],
-                ];
-                $s = $statusMap[$order->order_status] ?? ['dot' => 'bg-gray-400', 'text' => 'text-gray-500', 'label' => ucfirst($order->order_status)];
-            @endphp
-            <a href="{{ route('orders.show', $order->id) }}"
-               class="bg-white rounded-2xl p-4 block card-press">
-                <div class="flex items-start justify-between gap-2 mb-2">
-                    <div>
-                        <span class="text-[10px] font-bold text-[#AAAAAA]">#{{ $order->order_number }}</span>
-                        <div class="text-[15px] font-black text-[#111111] leading-tight mt-0.5">{{ $order->customer_name }}</div>
+            {{-- Critical Alerts --}}
+            <div class="bg-white rounded-xl border border-[#E8E8E8]">
+                <div class="flex items-center justify-between px-5 py-4 border-b border-[#F0F0F0]">
+                    <div class="flex items-center gap-2.5">
+                        <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        <span class="text-[13px] font-bold text-[#111111]">Critical Alerts</span>
                     </div>
-                    <div class="flex flex-col items-end gap-1 flex-shrink-0">
-                        <span class="flex items-center gap-1 text-[10px] font-bold {{ $s['text'] }}">
-                            <span class="w-1.5 h-1.5 rounded-full {{ $s['dot'] }} inline-block"></span>
-                            {{ $s['label'] }}
-                        </span>
-                        <div class="text-[15px] font-black text-[#111111] tabular-nums">₱{{ number_format($order->total_amount) }}</div>
-                    </div>
-                </div>
-                @if($order->items->count() > 0)
-                <div class="text-[11px] text-[#888888]">
-                    {{ $order->items->first()->product->product_name ?? '—' }}
-                    @if($order->items->count() > 1)
-                        + {{ $order->items->count() - 1 }} more
+                    @if($lowStockItems->count() > 0)
+                        <span class="text-[11px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full">{{ $lowStockItems->count() }}</span>
                     @endif
                 </div>
+
+                <ul class="divide-y divide-[#F5F5F5]">
+                    @forelse($lowStockItems as $inv)
+                        <li class="flex items-start gap-3 px-5 py-3.5">
+                            <div class="w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5 flex-shrink-0"></div>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-[12px] font-semibold text-[#111111]">
+                                    Low Stock: {{ $inv->product->product_name }}
+                                    @if($inv->product->size) ({{ $inv->product->size }}) @endif
+                                </div>
+                                <div class="text-[11px] text-[#888888] mt-0.5">
+                                    {{ $inv->current_stock }} units remaining. Min threshold: {{ $inv->min_stock_threshold }}.
+                                </div>
+                            </div>
+                        </li>
+                    @empty
+                        <li class="px-5 py-8 text-center">
+                            <div class="text-[12px] text-[#888888]">No critical alerts at this time.</div>
+                        </li>
+                    @endforelse
+                </ul>
+
+                @if($lowStockItems->count() > 0)
+                    <div class="px-5 py-3 border-t border-[#F0F0F0]">
+                        <a href="{{ route('inventory.index') }}"
+                           class="w-full flex items-center justify-center py-2 text-[12px] font-semibold text-[#555555] bg-white border border-[#E0E0E0] rounded-lg hover:bg-[#F5F5F5] transition-colors">
+                            Resolve All Alerts
+                        </a>
+                    </div>
                 @endif
-                <div class="flex items-center justify-between mt-3 pt-3 border-t border-[#F5F5F5]">
-                    <span class="text-[10px] text-[#AAAAAA]">{{ ucfirst($order->delivery_method ?? 'N/A') }} · {{ $order->created_at->diffForHumans() }}</span>
-                    @if(in_array($order->order_status, ['pending']))
-                    <span class="text-[11px] font-bold text-[#111111] bg-[#F5F5F5] px-3 py-1 rounded-lg">Confirm →</span>
-                    @elseif(in_array($order->order_status, ['confirmed','processing']))
-                    <span class="text-[11px] font-bold text-[#111111] bg-[#F5F5F5] px-3 py-1 rounded-lg">Process →</span>
+            </div>
+
+            {{-- Quick Actions --}}
+            <div class="bg-white rounded-xl border border-[#E8E8E8]">
+                <div class="px-5 py-4 border-b border-[#F0F0F0]">
+                    <span class="text-[13px] font-bold text-[#111111]">Quick Actions</span>
+                </div>
+                <div class="p-3 space-y-1">
+                    <a href="{{ route('orders.create') }}"
+                       class="flex items-center justify-between px-3 py-3 rounded-lg hover:bg-[#F5F5F5] transition-colors group">
+                        <div class="flex items-center gap-3">
+                            <div class="w-7 h-7 bg-[#F0F0F0] rounded-lg flex items-center justify-center group-hover:bg-[#E8E8E8] transition-colors">
+                                <svg class="w-3.5 h-3.5 text-[#555555]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                            </div>
+                            <span class="text-[13px] font-semibold text-[#333333]">Create New Order</span>
+                        </div>
+                        <svg class="w-3.5 h-3.5 text-[#BBBBBB]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+                    </a>
+                    <a href="{{ route('products.create') }}"
+                       class="flex items-center justify-between px-3 py-3 rounded-lg hover:bg-[#F5F5F5] transition-colors group">
+                        <div class="flex items-center gap-3">
+                            <div class="w-7 h-7 bg-[#F0F0F0] rounded-lg flex items-center justify-center group-hover:bg-[#E8E8E8] transition-colors">
+                                <svg class="w-3.5 h-3.5 text-[#555555]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                            </div>
+                            <span class="text-[13px] font-semibold text-[#333333]">Add Product</span>
+                        </div>
+                        <svg class="w-3.5 h-3.5 text-[#BBBBBB]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+                    </a>
+                    @if(auth()->user()->canAccessFinance())
+                    <a href="{{ route('finance.index') }}"
+                       class="flex items-center justify-between px-3 py-3 rounded-lg hover:bg-[#F5F5F5] transition-colors group">
+                        <div class="flex items-center gap-3">
+                            <div class="w-7 h-7 bg-[#F0F0F0] rounded-lg flex items-center justify-center group-hover:bg-[#E8E8E8] transition-colors">
+                                <svg class="w-3.5 h-3.5 text-[#555555]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                            </div>
+                            <span class="text-[13px] font-semibold text-[#333333]">Log Expense</span>
+                        </div>
+                        <svg class="w-3.5 h-3.5 text-[#BBBBBB]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+                    </a>
                     @endif
                 </div>
-            </a>
-            @empty
-            <div class="bg-white rounded-2xl p-8 text-center">
-                <div class="text-[13px] font-semibold text-[#888888]">No orders yet</div>
             </div>
-            @endforelse
+        </div>
+
+        {{-- RIGHT: Recent Activity --}}
+        <div class="xl:col-span-3">
+            <div class="bg-white rounded-xl border border-[#E8E8E8] h-full">
+                <div class="flex items-center justify-between px-5 py-4 border-b border-[#F0F0F0]">
+                    <span class="text-[13px] font-bold text-[#111111]">Recent Activity</span>
+                    <a href="{{ route('activity-logs.index') }}" class="text-[12px] font-semibold text-[#888888] hover:text-[#111111] transition-colors">
+                        View All History
+                    </a>
+                </div>
+
+                <ul class="divide-y divide-[#F5F5F5]">
+                    @forelse($recentLogs as $log)
+                        <li class="flex items-start gap-4 px-5 py-4">
+                            <div class="w-8 h-8 rounded-full bg-[#F0F0F0] flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span class="text-[11px] font-bold text-[#666666]">
+                                    {{ $log->user ? strtoupper(substr($log->user->name, 0, 1)) : 'S' }}
+                                </span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-start justify-between gap-2">
+                                    <span class="text-[12px] font-bold text-[#111111]">
+                                        {{ $log->user ? $log->user->name : 'System' }}
+                                    </span>
+                                    <span class="text-[10px] text-[#AAAAAA] flex-shrink-0">{{ $log->created_at->diffForHumans() }}</span>
+                                </div>
+                                <div class="text-[12px] text-[#555555] mt-0.5 font-semibold">{{ $log->action }}</div>
+                                <div class="text-[11px] text-[#888888] mt-0.5 line-clamp-2">{{ Str::limit($log->description, 80) }}</div>
+                            </div>
+                        </li>
+                    @empty
+                        <li class="px-5 py-12 text-center text-[#888888] text-[13px]">No activity recorded yet.</li>
+                    @endforelse
+                </ul>
+            </div>
         </div>
     </div>
-
-    {{-- ═══ FLOATING ACTION BUTTON (FAB) ═══ --}}
-    <a href="{{ route('orders.create') }}"
-       class="fixed bottom-20 right-4 z-20 w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-2xl shadow-black/40 transition-all active:scale-90">
-        <svg class="w-6 h-6 text-[#111111]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-            <path d="M12 5v14M5 12h14"/>
-        </svg>
-    </a>
 
 </div>
