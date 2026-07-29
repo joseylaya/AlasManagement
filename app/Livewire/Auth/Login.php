@@ -1,0 +1,59 @@
+<?php
+
+namespace App\Livewire\Auth;
+
+use App\Services\ActivityLogService;
+use Illuminate\Support\Facades\Auth;
+use Livewire\Component;
+
+class Login extends Component
+{
+    public string $email = '';
+    public string $password = '';
+    public bool $remember = false;
+
+    protected array $rules = [
+        'email' => 'required|email',
+        'password' => 'required',
+    ];
+
+    public function login(): void
+    {
+        $this->validate();
+
+        if (Auth::attempt(['email' => $this->email, 'password' => $this->password], $this->remember)) {
+            session()->regenerate();
+            
+            ActivityLogService::log(
+                'User Logged In',
+                "User " . Auth::user()->name . " (" . Auth::user()->role . ") logged in.",
+                Auth::user()
+            );
+
+            $this->redirectIntended(route('dashboard'));
+            return;
+        }
+
+        $this->addError('email', 'The provided credentials do not match our records or account is inactive.');
+    }
+
+    public function demoLogin(string $role): void
+    {
+        $email = match ($role) {
+            'owner' => 'owner@alas.com',
+            'manager' => 'manager@alas.com',
+            'staff' => 'staff@alas.com',
+            default => 'owner@alas.com',
+        };
+
+        $this->email = $email;
+        $this->password = 'password';
+
+        $this->login();
+    }
+
+    public function render()
+    {
+        return view('livewire.auth.login')->layout('layouts.guest', ['title' => 'Login — ALAS Business Manager']);
+    }
+}
