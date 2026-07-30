@@ -12,26 +12,25 @@
             {{ auth()->user()->name }}
         </p>
         <h2 class="text-[22px] font-bold text-[#111111]">My Orders Overview</h2>
-        <p class="text-[13px] text-[#888888] mt-0.5">Orders you've created today and their approval status.</p>
+        <p class="text-[13px] text-[#888888] mt-0.5">Build your monthly sales progress and incentives.</p>
+    </div>
+
+    {{-- Incentive motivation --}}
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="bg-white rounded-xl border border-[#E8E8E8] p-5">
+            <div class="flex items-start justify-between gap-3"><div><div class="text-[11px] font-bold text-[#888888] uppercase tracking-wide">Activity Incentives</div><div class="mt-1 text-[22px] font-black text-emerald-700 tabular-nums">₱{{ number_format($activityIncentives, 2) }}</div><p class="mt-1 text-[12px] text-[#777777]">Earned this month</p></div><div x-data="{ open:false }" class="relative"><button type="button" @click="open=!open" :aria-expanded="open.toString()" class="flex h-8 w-8 items-center justify-center rounded-full border border-[#D8D8D8] text-[13px] font-black text-[#555555]" aria-label="About activity incentives">i</button><div x-show="open" @click.outside="open=false" x-cloak class="absolute right-0 top-10 z-20 w-64 rounded-xl border border-[#E2E2E2] bg-white p-3 text-[12px] leading-relaxed text-[#555555] shadow-lg">Approved promotional activities earn incentives. Submitted activity follows the standard review process before it becomes payable.</div></div></div>
+        </div>
+        <div class="bg-white rounded-xl border border-[#E8E8E8] p-5">
+            <div class="flex items-start justify-between gap-3"><div class="flex-1"><div class="text-[11px] font-bold text-[#888888] uppercase tracking-wide">Sales Quota Incentive</div><div class="mt-1 text-[22px] font-black text-[#111111] tabular-nums">{{ min($quotaProgress, $quotaTarget) }} <span class="text-[14px] font-semibold text-[#888888]">/ {{ $quotaTarget }}</span></div><p class="mt-1 text-[12px] text-[#777777]">Complete {{ $quotaTarget }} sales to qualify for ₱{{ number_format($quotaReward, 0) }}.</p><div class="mt-3 h-2 overflow-hidden rounded-full bg-[#F0F0F0]"><div class="h-full rounded-full bg-[#111111]" style="width: {{ $quotaTarget > 0 ? min(100, ($quotaProgress / $quotaTarget) * 100) : 0 }}%"></div></div></div><div x-data="{ open:false }" class="relative"><button type="button" @click="open=!open" :aria-expanded="open.toString()" class="flex h-8 w-8 items-center justify-center rounded-full border border-[#D8D8D8] text-[13px] font-black text-[#555555]" aria-label="About sales quota incentives">i</button><div x-show="open" @click.outside="open=false" x-cloak class="absolute right-0 top-10 z-20 w-64 rounded-xl border border-[#E2E2E2] bg-white p-3 text-[12px] leading-relaxed text-[#555555] shadow-lg">Only completed, valid sales you created count toward the monthly quota. Qualification and payout follow the standard review process.</div></div></div>
+            @if($quotaIncentives > 0)<p class="mt-3 text-[11px] font-semibold text-emerald-700">₱{{ number_format($quotaIncentives, 2) }} quota incentive recorded this month.</p>@endif
+        </div>
     </div>
 
     {{-- Staff KPIs --}}
-    <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <div class="bg-white rounded-xl border border-[#E8E8E8] p-5">
-            <div class="text-[22px] font-black text-[#111111] tabular-nums mb-1">{{ $myOrdersCount }}</div>
-            <div class="text-[12px] text-[#888888]">Orders Created Today</div>
-        </div>
-        <div class="bg-white rounded-xl border border-[#E8E8E8] p-5">
-            <div class="text-[22px] font-black {{ $pendingApprovalCount > 0 ? 'text-orange-600' : 'text-[#111111]' }} tabular-nums mb-1">{{ $pendingApprovalCount }}</div>
-            <div class="text-[12px] text-[#888888]">Awaiting Approval</div>
-            @if($pendingApprovalCount > 0)
-                <div class="text-[11px] text-orange-600 font-semibold mt-1">Submitted for review</div>
-            @endif
-        </div>
-        <div class="col-span-2 lg:col-span-1 bg-white rounded-xl border border-[#E8E8E8] p-5">
-            <div class="text-[22px] font-black {{ $lowStockCount > 0 ? 'text-red-600' : 'text-[#111111]' }} tabular-nums mb-1">{{ $lowStockCount }}</div>
-            <div class="text-[12px] text-[#888888]">Low Stock Items</div>
-        </div>
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div class="bg-white rounded-xl border border-[#E8E8E8] p-5"><div class="text-[11px] font-bold text-[#888888] uppercase tracking-wide">My Orders This Month</div><div class="mt-1 text-[24px] font-black text-[#111111] tabular-nums">{{ $myOrdersCount }}</div><p class="mt-1 text-[12px] text-[#777777]">Your recorded orders for the current month.</p><details class="mt-2 text-[11px] text-[#666666]"><summary class="cursor-pointer font-semibold">ⓘ What counts?</summary><p class="mt-1">Every order you create this month is included, whether it is still waiting for approval or already complete.</p></details></div>
+        <div class="bg-white rounded-xl border border-[#E8E8E8] p-5"><div class="text-[22px] font-black {{ $lowStockCount > 0 ? 'text-red-600' : 'text-[#111111]' }} tabular-nums mb-1">{{ $lowStockCount }}</div><div class="text-[12px] text-[#888888]">Low Stock Items</div><details class="mt-2 text-[11px] text-[#666666]"><summary class="cursor-pointer font-semibold">ⓘ What does this mean?</summary><p class="mt-1">These products need restocking soon. Let the team know if an item is needed for a customer order.</p></details></div>
+        <div class="col-span-2 sm:col-span-1 bg-white rounded-xl border border-[#E8E8E8] p-5"><div class="text-[22px] font-black {{ $pendingApprovalCount > 0 ? 'text-orange-600' : 'text-[#111111]' }} tabular-nums mb-1">{{ $pendingApprovalCount }}</div><div class="text-[12px] text-[#888888]">Awaiting Approval</div>@if($pendingApprovalCount > 0)<div class="text-[11px] text-orange-600 font-semibold mt-1">Submitted for review</div>@endif<details class="mt-2 text-[11px] text-[#666666]"><summary class="cursor-pointer font-semibold">ⓘ What happens next?</summary><p class="mt-1">Orders move to fulfillment after the standard team review.</p></details></div>
     </div>
 
     {{-- Quick Action --}}
@@ -128,6 +127,7 @@
             @if($pendingApprovalCount > 0)
                 <a href="{{ route('orders.index', ['selectedApproval' => 'pending_approval']) }}" wire:navigate class="text-[11px] text-orange-600 font-semibold hover:text-orange-700 mt-1 block">Review now →</a>
             @endif
+            <details class="mt-2 text-[11px] text-[#666666]"><summary class="cursor-pointer font-semibold">ⓘ What should I do?</summary><p class="mt-1">Review these staff orders. Approve valid orders or reject them with a clear reason.</p></details>
         </div>
 
         <div class="bg-white rounded-xl border border-[#E8E8E8] p-5">
@@ -136,6 +136,7 @@
             </div>
             <div class="text-[22px] font-black text-[#111111] tabular-nums">{{ $ordersToFulfilCount }}</div>
             <div class="text-[12px] text-[#888888] mt-0.5">Orders to Fulfil</div>
+            <details class="mt-2 text-[11px] text-[#666666]"><summary class="cursor-pointer font-semibold">ⓘ What should I do?</summary><p class="mt-1">These approved orders are confirmed or being prepared. Update each one as it moves through fulfillment.</p></details>
         </div>
 
         <div class="bg-white rounded-xl border border-[#E8E8E8] p-5">
@@ -144,6 +145,7 @@
             </div>
             <div class="text-[22px] font-black text-[#111111] tabular-nums">₱{{ number_format($currentCash, 0) }}</div>
             <div class="text-[12px] text-[#888888] mt-0.5">Cash Position</div>
+            <details class="mt-2 text-[11px] text-[#666666]"><summary class="cursor-pointer font-semibold">ⓘ What does this show?</summary><p class="mt-1">Recorded business cash from sales, expenses, and withdrawals. It may exclude offline records that have not synchronized.</p></details>
         </div>
 
         <div class="bg-white rounded-xl border border-[#E8E8E8] p-5">
@@ -152,6 +154,7 @@
             </div>
             <div class="text-[22px] font-black {{ $lowStockCount > 0 ? 'text-red-600' : 'text-[#111111]' }} tabular-nums">{{ $lowStockCount }}</div>
             <div class="text-[12px] text-[#888888] mt-0.5">Low Stock Items</div>
+            <details class="mt-2 text-[11px] text-[#666666]"><summary class="cursor-pointer font-semibold">ⓘ What should I do?</summary><p class="mt-1">Check these items and restock or adjust inventory before they prevent customer orders.</p></details>
         </div>
     </div>
 

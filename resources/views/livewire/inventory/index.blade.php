@@ -121,8 +121,9 @@
 
     <!-- Restock / Adjust Stock Modal -->
     @if($showMovementModal && $selectedProduct && $canAdjustInventory)
-        <div class="fixed inset-0 z-[90] bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 sm:p-4">
-            <div class="bg-white rounded-t-2xl sm:rounded-2xl max-w-md w-full max-h-[88vh] overflow-y-auto p-6 shadow-2xl space-y-5 border border-slate-200">
+        <template x-teleport="body">
+        <div wire:click.self="resetModal" class="fixed inset-0 z-[90] bg-black/30 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div class="app-modal-sheet bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[92dvh] sm:max-h-[88vh] overflow-y-auto p-6 shadow-2xl space-y-5 border border-slate-200">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                     <h3 class="font-extrabold text-slate-900 text-base">
                         {{ $movementActionType === 'add' ? '➕ Restock Product' : '✏️ Adjust Inventory Count' }}
@@ -178,12 +179,14 @@
                 </form>
             </div>
         </div>
+        </template>
     @endif
 
     <!-- Stock Movement History Modal -->
     @if($showHistoryModal && $historyProduct)
-        <div class="fixed inset-0 z-[90] bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 sm:p-4">
-            <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 border border-slate-200 max-h-[85vh] flex flex-col">
+        <template x-teleport="body">
+        <div wire:click.self="$set('showHistoryModal', false)" class="fixed inset-0 z-[90] bg-black/30 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div class="app-modal-sheet bg-white rounded-t-2xl sm:rounded-2xl sm:max-w-2xl w-full p-6 shadow-2xl space-y-4 border border-slate-200 max-h-[92dvh] sm:max-h-[88vh] flex flex-col">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div>
                         <h3 class="font-extrabold text-slate-900 text-base">Movement Trail — {{ $historyProduct->product_name }}</h3>
@@ -212,6 +215,7 @@
                 </div>
             </div>
         </div>
+        </template>
     @endif
 
 </div>

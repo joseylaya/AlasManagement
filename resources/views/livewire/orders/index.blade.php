@@ -318,8 +318,9 @@
 
     {{-- ===== REJECT MODAL ===== --}}
     @if($showRejectModal)
-    <div class="fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-sm">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md" x-data>
+    <template x-teleport="body">
+    <div wire:click.self="closeRejectModal" class="fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/30">
+        <div class="app-modal-sheet bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md" x-data>
             <div class="px-6 pt-6 pb-4 border-b border-[#F0F0F0]">
                 <h3 class="text-[16px] font-bold text-[#111111]">Reject Order</h3>
                 <p class="text-[13px] text-[#888888] mt-0.5">Please provide a reason for rejection.</p>
@@ -342,6 +343,7 @@
             </div>
         </div>
     </div>
+    </template>
     @endif
 
 </div>

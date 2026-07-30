@@ -69,8 +69,9 @@
 
     <!-- Create User Modal -->
     @if($showUserModal)
-        <div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 border border-slate-200">
+        <template x-teleport="body">
+        <div wire:click.self="$set('showUserModal', false)" class="fixed inset-0 z-[90] bg-black/30 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div class="app-modal-sheet bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[92dvh] sm:max-h-[88vh] overflow-y-auto p-6 shadow-2xl space-y-5 border border-slate-200">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                     <h3 class="font-extrabold text-slate-900 text-base">👤 Add Employee Account</h3>
                     <button wire:click="$set('showUserModal', false)" class="text-slate-400 hover:text-slate-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
@@ -111,6 +112,7 @@
                 </form>
             </div>
         </div>
+        </template>
     @endif
 
 </div>

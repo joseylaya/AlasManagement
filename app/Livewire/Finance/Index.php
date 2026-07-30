@@ -6,6 +6,11 @@ use App\Actions\RecordExpenseAction;
 use App\Actions\RecordOwnerWithdrawalAction;
 use App\Models\CashTransaction;
 use App\Models\ExpenseCategory;
+use App\Models\CompensationRecord;
+use App\Models\SalaryProfile;
+use App\Models\User;
+use App\Actions\PayCompensationAction;
+use App\Services\ActivityLogService;
 
 use App\Services\FinanceService;
 use Exception;
@@ -32,6 +37,14 @@ class Index extends Component
     public string $drawal_date = '';
     public string $drawal_reason = 'Owner Monthly Drawdown';
 
+    public bool $showCompensationModal = false;
+    public ?int $compensation_user_id = null;
+    public string $compensation_type = 'salary';
+    public $compensation_amount = '';
+    public ?string $compensation_period_start = null;
+    public ?string $compensation_period_end = null;
+    public string $compensation_remarks = '';
+
     public function mount(): void
     {
         $this->expense_date = date('Y-m-d');
@@ -40,6 +53,7 @@ class Index extends Component
         if ($firstCategory) {
             $this->expense_category_id = $firstCategory->id;
         }
+        $this->compensation_user_id = User::where('status', 'active')->orderBy('name')->value('id');
     }
 
     public function saveExpense(): void
@@ -95,6 +109,29 @@ class Index extends Component
         }
     }
 
+    public function createCompensation(): void
+    {
+        abort_unless(auth()->user()->isOwner() || auth()->user()->isManager(), 403);
+        $this->validate(['compensation_user_id'=>'required|exists:users,id','compensation_type'=>'required|in:salary,activity_incentive,quota_incentive,bonus,adjustment','compensation_amount'=>'required|numeric|min:0.01']);
+        $record = CompensationRecord::create(['record_number'=>'PENDING','user_id'=>$this->compensation_user_id,'type'=>$this->compensation_type,'amount'=>$this->compensation_amount,'period_start'=>$this->compensation_period_start,'period_end'=>$this->compensation_period_end,'remarks'=>$this->compensation_remarks,'status'=>'pending_approval','created_by'=>auth()->id(),'updated_by'=>auth()->id()]);
+        $record->update(['record_number'=>'CMP-'.str_pad($record->id,6,'0',STR_PAD_LEFT)]);
+        ActivityLogService::log('Compensation Created',"Created {$record->type} compensation {$record->record_number} for ₱".number_format($record->amount,2).'.',$record,['compensation_type'=>$record->type,'amount'=>$record->amount,'new_status'=>'pending_approval']);
+        $this->showCompensationModal=false; $this->compensation_amount=''; $this->compensation_remarks=''; session()->flash('success','Compensation submitted for Owner approval.');
+    }
+
+    public function approveCompensation(int $recordId): void
+    {
+        abort_unless(auth()->user()->isOwner(), 403); $record=CompensationRecord::findOrFail($recordId);
+        if ($record->status !== 'pending_approval') { session()->flash('error','This compensation record is no longer awaiting approval.'); return; }
+        $record->update(['status'=>'payable','approved_at'=>now(),'approved_by'=>auth()->id(),'posted_to_finance_at'=>now(),'updated_by'=>auth()->id()]);
+        ActivityLogService::log('Compensation Approved',"Approved {$record->record_number} as payable.",$record,['previous_status'=>'pending_approval','new_status'=>'payable']); session()->flash('success','Compensation is now payable and reserved from available funds.');
+    }
+
+    public function payCompensation(int $recordId): void
+    {
+        try { $record=PayCompensationAction::execute(CompensationRecord::findOrFail($recordId),auth()->user()); session()->flash('success',"{$record->record_number} was paid and recorded in cash transactions."); } catch (Exception $e) { session()->flash('error',$e->getMessage()); }
+    }
+
     public function render()
     {
         $canAccessFinance = auth()->user()->canAccessFinance();
@@ -119,6 +156,11 @@ class Index extends Component
 
         $cashTransactions = $query->latest('transaction_date')->paginate(10);
         $expenseCategories = ExpenseCategory::where('status', 'active')->get();
+        $compensationQuery = CompensationRecord::with('user')->latest('id');
+        if (auth()->user()->isStaff()) $compensationQuery->where('user_id', auth()->id());
+        if (auth()->user()->isManager()) $compensationQuery->whereHas('user', fn ($query) => $query->where('role', '!=', 'owner'));
+        $compensationRecords = $compensationQuery->take(12)->get();
+        $compensationCommitments = $canAccessFinance ? FinanceService::getCompensationCommitments() : 0;
 
         return view('livewire.finance.index', [
             'currentCash' => $currentCash,
@@ -131,6 +173,10 @@ class Index extends Component
             'canAccessFinance' => $canAccessFinance,
             'canModifyFinance' => auth()->user()->canModifyFinance(),
             'canRecordWithdrawals' => auth()->user()->canRecordWithdrawals(),
+            'compensationRecords' => $compensationRecords,
+            'compensationCommitments' => $compensationCommitments,
+            'compensationUsers' => User::where('status','active')->orderBy('name')->get(),
+            'canViewCompensation' => true,
         ])->layout('layouts.app', ['pageHeader' => 'Finance & Cash Movement']);
     }
 }

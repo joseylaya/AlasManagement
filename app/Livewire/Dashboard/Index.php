@@ -5,6 +5,8 @@ namespace App\Livewire\Dashboard;
 use App\Models\ActivityLog;
 use App\Models\Inventory;
 use App\Models\Order;
+use App\Models\CompensationRecord;
+use App\Models\Setting;
 use App\Services\FinanceService;
 use Livewire\Component;
 
@@ -28,10 +30,21 @@ class Index extends Component
         // ─── Staff: only their own orders ────────────────────────
         $myOrdersCount = 0;
         $myRecentOrders = collect();
+        $activityIncentives = 0;
+        $quotaIncentives = 0;
+        $quotaProgress = 0;
+        $quotaTarget = 0;
+        $quotaReward = 0;
         if ($user->isStaff()) {
-            $myOrdersCount    = Order::where('created_by', $user->id)->whereDate('created_at', today())->count();
+            $myOrdersCount    = Order::where('created_by', $user->id)->whereBetween('created_at', [now()->startOfMonth(), now()])->count();
             $myRecentOrders   = Order::where('created_by', $user->id)->with('items')->latest('id')->take(5)->get();
             $pendingApprovalCount = Order::where('created_by', $user->id)->where('approval_status', 'pending_approval')->count();
+            $periodStart = now()->startOfMonth();
+            $activityIncentives = (float) CompensationRecord::where('user_id', $user->id)->where('type', 'activity_incentive')->where('status', '!=', 'cancelled')->whereBetween('created_at', [$periodStart, now()])->sum('amount');
+            $quotaIncentives = (float) CompensationRecord::where('user_id', $user->id)->where('type', 'quota_incentive')->where('status', '!=', 'cancelled')->whereBetween('created_at', [$periodStart, now()])->sum('amount');
+            $quotaTarget = (int) Setting::getByKey('staff_sales_quota_target', 15);
+            $quotaReward = (float) Setting::getByKey('staff_sales_quota_reward', 500);
+            $quotaProgress = Order::where('created_by', $user->id)->where('order_status', 'completed')->whereBetween('created_at', [$periodStart, now()])->count();
         }
 
         // ─── Finance data (Owner + Manager only) ─────────────────
@@ -99,6 +112,11 @@ class Index extends Component
             // Staff-specific
             'myOrdersCount'       => $myOrdersCount,
             'myRecentOrders'      => $myRecentOrders,
+            'activityIncentives'  => $activityIncentives,
+            'quotaIncentives'     => $quotaIncentives,
+            'quotaProgress'       => $quotaProgress,
+            'quotaTarget'         => $quotaTarget,
+            'quotaReward'         => $quotaReward,
         ])->layout('layouts.app', ['pageHeader' => 'Business Command Center']);
     }
 }

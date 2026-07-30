@@ -36,8 +36,20 @@
     @else
     <div class="bg-white border border-[#E8E8E8] rounded-2xl p-5 shadow-sm">
         <h2 class="text-[15px] font-bold text-[#111111]">Finance ledger</h2>
-        <p class="text-[13px] text-[#666666] mt-1">You have read-only access to permitted transactions. Cash balances and financial reports are restricted to Managers and the Owner.</p>
+        <p class="text-[13px] text-[#666666] mt-1">You have read-only access to permitted transactions. Some balances and reports have limited access.</p>
     </div>
+    @endif
+
+    @if($canViewCompensation)
+    <section class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><div><h2 class="text-[15px] font-bold text-slate-900">Salary & Compensation</h2><p class="text-[12px] text-slate-500">₱{{ number_format($compensationCommitments, 2) }} approved and unpaid — reserved from available funds.</p></div>@if(auth()->user()->isOwner() || auth()->user()->isManager())<button type="button" wire:click="$set('showCompensationModal', true)" class="min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#111111] px-4 text-[12px] font-bold text-white">＋ Add compensation</button>@endif</div>
+        <div class="mt-4 space-y-2">
+        @forelse($compensationRecords as $record)
+            <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3"><div><p class="text-[13px] font-bold text-slate-900">{{ $record->user->name }} <span class="font-normal text-slate-500">· {{ str_replace('_',' ',$record->type) }}</span></p><p class="text-[11px] text-slate-500">{{ $record->record_number }} @if($record->period_start) · {{ $record->period_start->format('M j') }}–{{ $record->period_end?->format('M j, Y') }} @endif</p></div><div class="flex items-center gap-2"><span class="text-[13px] font-black text-slate-900">₱{{ number_format($record->amount,2) }}</span><span class="rounded-full bg-white px-2 py-1 text-[10px] font-bold text-slate-600">{{ str_replace('_',' ',$record->status) }}</span>@if(auth()->user()->isOwner() && $record->status === 'pending_approval')<button type="button" wire:click="approveCompensation({{ $record->id }})" wire:loading.attr="disabled" class="min-h-[36px] rounded-lg bg-blue-600 px-3 text-[11px] font-bold text-white">Approve</button>@elseif(auth()->user()->isOwner() && $record->status === 'payable')<button type="button" wire:click="payCompensation({{ $record->id }})" wire:loading.attr="disabled" class="min-h-[36px] rounded-lg bg-emerald-600 px-3 text-[11px] font-bold text-white">Pay</button>@endif</div></div>
+        @empty <p class="py-5 text-center text-[12px] text-slate-500">No salary or incentive records yet.</p>
+        @endforelse
+        </div>
+    </section>
     @endif
 
     <!-- Header Actions & Cash Transactions Table -->
@@ -170,8 +182,9 @@
 
     <!-- Record Expense Modal -->
     @if($showExpenseModal && $canModifyFinance)
-        <div class="fixed inset-0 z-[90] bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 sm:p-4">
-            <div class="bg-white rounded-t-2xl sm:rounded-2xl max-w-md w-full max-h-[88vh] overflow-y-auto p-6 shadow-2xl space-y-5 border border-slate-200">
+        <template x-teleport="body">
+        <div wire:click.self="$set('showExpenseModal', false)" class="fixed inset-0 z-[90] bg-black/30 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div class="app-modal-sheet bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[92dvh] sm:max-h-[88vh] overflow-y-auto p-6 shadow-2xl space-y-5 border border-slate-200">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                     <h3 class="font-extrabold text-slate-900 text-base">💸 Record Business Expense</h3>
                     <button type="button" wire:click="$set('showExpenseModal', false)" class="min-h-[44px] min-w-[44px] text-slate-400 hover:text-slate-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
@@ -212,12 +225,14 @@
                 </form>
             </div>
         </div>
+        </template>
     @endif
 
     <!-- Record Owner Withdrawal Modal -->
     @if($showDrawalModal && $canRecordWithdrawals)
-        <div class="fixed inset-0 z-[90] bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 sm:p-4">
-            <div class="bg-white rounded-t-2xl sm:rounded-2xl max-w-md w-full max-h-[88vh] overflow-y-auto p-6 shadow-2xl space-y-5 border border-slate-200">
+        <template x-teleport="body">
+        <div wire:click.self="$set('showDrawalModal', false)" class="fixed inset-0 z-[90] bg-black/30 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div class="app-modal-sheet bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[92dvh] sm:max-h-[88vh] overflow-y-auto p-6 shadow-2xl space-y-5 border border-slate-200">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                     <h3 class="font-extrabold text-slate-900 text-base">👑 Record Owner Cash Withdrawal</h3>
                     <button type="button" wire:click="$set('showDrawalModal', false)" class="min-h-[44px] min-w-[44px] text-slate-400 hover:text-slate-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
@@ -252,6 +267,18 @@
                 </form>
             </div>
         </div>
+        </template>
+    @endif
+
+    @if($showCompensationModal && ($canModifyFinance || auth()->user()->isOwner()))
+    <template x-teleport="body">
+    <div wire:click.self="$set('showCompensationModal', false)" class="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/30 p-0 sm:p-4">
+        <div class="app-modal-sheet w-full sm:max-w-md max-h-[92dvh] sm:max-h-[88vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-white p-6 shadow-2xl">
+            <div class="mb-5 flex items-center justify-between"><h3 class="text-[16px] font-bold text-slate-900">Add compensation</h3><button type="button" wire:click="$set('showCompensationModal', false)" class="min-h-[44px] min-w-[44px] text-slate-500">✕</button></div>
+            <form wire:submit.prevent="createCompensation" class="space-y-4"><div><label class="mb-1 block text-[11px] font-bold text-slate-700">EMPLOYEE</label><select wire:model="compensation_user_id" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">@foreach($compensationUsers as $employee)<option value="{{ $employee->id }}">{{ $employee->name }} · {{ ucfirst($employee->role) }}</option>@endforeach</select></div><div class="grid grid-cols-2 gap-3"><div><label class="mb-1 block text-[11px] font-bold text-slate-700">TYPE</label><select wire:model="compensation_type" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm"><option value="salary">Salary</option><option value="activity_incentive">Activity Incentive</option><option value="quota_incentive">Quota Incentive</option><option value="bonus">Bonus</option><option value="adjustment">Adjustment</option></select></div><div><label class="mb-1 block text-[11px] font-bold text-slate-700">AMOUNT</label><input type="number" step="0.01" wire:model="compensation_amount" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm" placeholder="0.00"></div></div><div class="grid grid-cols-2 gap-3"><input type="date" wire:model="compensation_period_start" class="rounded-xl border border-slate-200 px-3 py-3 text-sm"><input type="date" wire:model="compensation_period_end" class="rounded-xl border border-slate-200 px-3 py-3 text-sm"></div><textarea wire:model="compensation_remarks" rows="2" class="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm" placeholder="Remarks (optional)"></textarea><button type="submit" wire:loading.attr="disabled" class="min-h-[44px] w-full rounded-xl bg-[#111111] text-sm font-bold text-white">Submit for approval</button></form>
+        </div>
+    </div>
+    </template>
     @endif
 
 </div>

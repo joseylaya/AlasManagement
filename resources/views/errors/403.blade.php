@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Access Denied — ALAS OS</title>
+    <title>Access Denied — Business Manager</title>
+    <meta name="theme-color" content="#000000">
+    <link rel="icon" type="image/png" href="{{ asset('images/alas-logo.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('images/alas-logo.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -22,8 +25,7 @@
         </p>
         <p class="text-[13px] text-[#AAAAAA] mb-8">
             @auth
-                Logged in as <strong class="text-[#666666]">{{ auth()->user()->name }}</strong>
-                ({{ ucfirst(auth()->user()->role) }}).
+                Logged in as <strong class="text-[#666666]">{{ auth()->user()->name }}</strong>.
                 This section requires a higher access level.
             @else
                 Please log in to continue.

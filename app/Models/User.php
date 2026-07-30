@@ -162,4 +162,7 @@ class User extends Authenticatable
     {
         return $this->hasMany(Notification::class);
     }
+
+    public function salaryProfiles() { return $this->hasMany(SalaryProfile::class); }
+    public function compensationRecords() { return $this->hasMany(CompensationRecord::class); }
 }

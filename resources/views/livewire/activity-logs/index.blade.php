@@ -3,8 +3,8 @@
     <!-- Header & Filter -->
     <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-            <h2 class="text-base font-bold text-slate-900">Immutable System Audit Trail</h2>
-            <p class="text-xs text-slate-500">Every product edit, order status update, and cash movement is logged permanently</p>
+            <h2 class="text-base font-bold text-slate-900">{{ auth()->user()->isStaff() ? 'My Activity History' : 'Immutable System Audit Trail' }}</h2>
+            <p class="text-xs text-slate-500">{{ auth()->user()->isStaff() ? 'Your product edits, order updates, and recorded actions' : 'Every product edit, order status update, and cash movement is logged permanently' }}</p>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full sm:w-auto">
@@ -15,12 +15,14 @@
                 class="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 focus:bg-white"
             >
 
-            <select wire:model.live="selectedUser" class="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 focus:bg-white">
-                <option value="">All Users</option>
-                @foreach($users as $u)
-                    <option value="{{ $u->id }}">{{ $u->name }} ({{ ucfirst($u->role) }})</option>
-                @endforeach
-            </select>
+            @unless(auth()->user()->isStaff())
+                <select wire:model.live="selectedUser" class="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 focus:bg-white">
+                    <option value="">All Users</option>
+                    @foreach($users as $u)
+                        <option value="{{ $u->id }}">{{ $u->name }} ({{ ucfirst($u->role) }})</option>
+                    @endforeach
+                </select>
+            @endunless
         </div>
     </div>
 
@@ -45,7 +47,9 @@
                             </td>
                             <td class="px-6 py-4">
                                 <div class="font-bold text-slate-900">{{ $log->user->name ?? 'System Automated' }}</div>
-                                <div class="text-[10px] text-slate-400 font-semibold uppercase">{{ $log->user->role ?? 'System' }}</div>
+                                @unless(auth()->user()->isStaff())
+                                    <div class="text-[10px] text-slate-400 font-semibold uppercase">{{ $log->user->role ?? 'System' }}</div>
+                                @endunless
                             </td>
                             <td class="px-6 py-4">
                                 <span class="px-2.5 py-1 text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 rounded-md">

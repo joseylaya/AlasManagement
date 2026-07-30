@@ -4,8 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ?? 'ALAS OS — Operational Suite' }}</title>
-    <meta name="description" content="ALAS OS — Inventory, Orders & Finance Control">
+    <title>{{ $title ?? 'Business Manager' }}</title>
+    <meta name="description" content="Inventory, orders, and finance management in one workspace.">
+    <meta name="application-name" content="Business Manager">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-title" content="Business Manager">
+    <link rel="icon" type="image/png" href="{{ asset('images/alas-logo.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('images/alas-logo.png') }}">
+    <link rel="manifest" href="{{ asset('site.webmanifest') }}">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Business Manager">
+    <meta property="og:description" content="Inventory, orders, and finance management in one workspace.">
+    <meta property="og:image" content="{{ url('/images/alas-logo-master.png') }}">
+    <meta property="og:image:width" content="800">
+    <meta property="og:image:height" content="800">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Business Manager">
+    <meta name="twitter:description" content="Inventory, orders, and finance management in one workspace.">
+    <meta name="twitter:image" content="{{ url('/images/alas-logo-master.png') }}">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,7 +49,11 @@
         .page-content { transition: opacity 140ms ease, transform 140ms ease; }
         .is-navigating .navigation-skeleton { opacity: 1; pointer-events: auto; }
         .is-navigating .page-content { opacity: 0; transform: translateY(4px); pointer-events: none; }
-        @media (prefers-reduced-motion: reduce) { .animate-skeleton, .page-content, .navigation-skeleton { animation: none; transition: none; } }
+        @keyframes app-modal-sheet-in { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes app-modal-dialog-in { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .app-modal-sheet { animation: app-modal-sheet-in 260ms cubic-bezier(.22, .8, .25, 1) both; }
+        @media (min-width: 640px) { .app-modal-sheet { animation-name: app-modal-dialog-in; } }
+        @media (prefers-reduced-motion: reduce) { .animate-skeleton, .page-content, .navigation-skeleton, .app-modal-sheet { animation: none; transition: none; } }
 
         /* Mobile bottom nav safe area */
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
@@ -69,7 +89,7 @@
 @endphp
 <div x-data="{ online: navigator.onLine, pending: 0 }" @alas-sync-status.window="online = $event.detail.online; pending = $event.detail.pending" class="fixed inset-x-0 top-14 z-40 lg:top-0">
     <div x-show="!online || pending" x-cloak class="mx-auto max-w-3xl rounded-b-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-center text-[12px] font-semibold text-amber-900">
-        <span x-text="!online ? 'You are offline. New sales and Owner Withdrawals will be saved on this device.' : `${pending} transaction${pending === 1 ? '' : 's'} waiting to synchronize.`"></span>
+        <span x-text="!online ? 'You are offline. New sales and permitted cash transactions will be saved on this device.' : `${pending} transaction${pending === 1 ? '' : 's'} waiting to synchronize.`"></span>
         <button type="button" x-show="online && pending" @click="window.AlasOffline.sync()" class="ml-2 underline">Sync now</button>
     </div>
 </div>
@@ -97,10 +117,7 @@
               transform transition-transform duration-250 ease-out overflow-y-auto flex flex-col">
 
     <div class="flex items-center justify-between px-5 pt-12 pb-5 border-b border-white/[0.08]">
-        <div>
-            <div class="text-[15px] font-black text-white tracking-tight leading-none">ALAS OS</div>
-            <div class="text-[10px] text-white/30 uppercase tracking-[0.15em] font-semibold mt-1">Operational Suite</div>
-        </div>
+        <img src="{{ asset('images/alas-logo.png') }}" alt="Business Manager" class="h-11 w-11 rounded-xl object-cover">
         <button @click="drawerOpen=false"
                 class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
             <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
@@ -219,7 +236,6 @@
             </div>
             <div class="flex-1 min-w-0">
                 <div class="text-[13px] font-bold text-white truncate">{{ auth()->user()->name ?? 'Guest' }}</div>
-                <div class="text-[11px] text-white/30 capitalize">{{ auth()->user()->role ?? '' }}</div>
             </div>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
@@ -241,8 +257,8 @@
             <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
         </svg>
     </button>
-    <div class="flex-1 text-center">
-        <div class="text-[13px] font-black text-white tracking-[0.02em]">ALAS OPERATING SYSTEM</div>
+    <div class="flex-1 flex justify-center">
+        <img src="{{ asset('images/alas-logo.png') }}" alt="Business Manager" class="h-11 w-11 rounded-xl object-cover">
     </div>
     <button type="button" @click="notificationsOpen = true" :aria-expanded="notificationsOpen.toString()" aria-controls="mobile-notifications"
             class="w-11 h-11 flex items-center justify-center rounded-xl hover:bg-white/10 transition-colors relative flex-shrink-0">
@@ -342,15 +358,14 @@
 {{-- ══════════════════════════════════════════════════════
      DESKTOP LAYOUT: Fixed sidebar + top header + main content
      ══════════════════════════════════════════════════════ --}}
-<div class="hidden lg:flex h-full">
+<div class="flex min-h-screen">
 
     {{-- ─── Fixed Sidebar ─── --}}
-    <aside class="fixed left-0 top-0 bottom-0 w-[220px] xl:w-[240px] bg-white border-r border-[#E8E8E8] flex flex-col z-20 overflow-y-auto">
+    <aside class="fixed left-0 top-0 bottom-0 hidden w-[220px] xl:w-[240px] bg-white border-r border-[#E8E8E8] lg:flex flex-col z-20 overflow-y-auto">
 
-        {{-- Logo --}}
-        <div class="px-5 py-5 border-b border-[#F0F0F0]">
-            <div class="text-[15px] font-black text-[#111111] tracking-tight leading-none">ALAS OS</div>
-            <div class="text-[10px] text-[#AAAAAA] uppercase tracking-[0.12em] font-semibold mt-1">Operational Suite</div>
+        {{-- Brand mark --}}
+        <div class="px-5 py-4 border-b border-[#F0F0F0]">
+            <img src="{{ asset('images/alas-logo.png') }}" alt="Business Manager" class="h-12 w-12 rounded-xl object-cover">
         </div>
 
         {{-- Nav Links --}}
@@ -465,7 +480,6 @@
                 </div>
                 <div class="flex-1 min-w-0">
                     <div class="text-[12px] font-bold text-[#111111] truncate">{{ auth()->user()->name ?? 'Guest' }}</div>
-                    <div class="text-[10px] text-[#AAAAAA] capitalize">{{ auth()->user()->role ?? '' }}</div>
                 </div>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
@@ -481,10 +495,10 @@
     </aside>
 
     {{-- ─── Desktop Right Column (top bar + content) ─── --}}
-    <div class="flex-1 flex flex-col ml-[220px] xl:ml-[240px] min-h-full">
+    <div class="flex-1 flex flex-col ml-0 lg:ml-[220px] xl:ml-[240px] min-h-screen">
 
         {{-- Desktop Top Header --}}
-        <header class="sticky top-0 z-10 bg-white border-b border-[#E8E8E8] flex items-center h-14 px-6 gap-4">
+        <header class="sticky top-0 z-10 hidden bg-white border-b border-[#E8E8E8] lg:flex items-center h-14 px-6 gap-4">
             <div class="flex-1">
                 <h1 class="text-[15px] font-bold text-[#111111] leading-none">
                     @if(request()->routeIs('dashboard'))         Business Command Center
@@ -498,7 +512,7 @@
                     @elseif(request()->routeIs('activity-logs.*')) Activity Logs
                     @elseif(request()->routeIs('users.*'))       Users
                     @elseif(request()->routeIs('settings.*'))    Settings
-                    @else ALAS OS
+                    @else Business Manager
                     @endif
                 </h1>
             </div>
@@ -522,8 +536,8 @@
         </header>
 
         {{-- Desktop Content --}}
-        <main class="relative flex-1 p-6" aria-live="polite" aria-busy="false" data-page-content>
-            <div class="navigation-skeleton absolute inset-0 z-10 bg-[#F2F2F2]/95 p-6" data-navigation-skeleton>
+        <main class="relative flex-1 p-4 pt-[72px] pb-20 lg:p-6" aria-live="polite" aria-busy="false" data-page-content>
+            <div class="navigation-skeleton absolute inset-0 z-10 bg-[#F2F2F2]/95 p-4 lg:p-6" data-navigation-skeleton>
                 <span class="sr-only">Loading page content</span>
                 <x-skeleton.page />
             </div>
@@ -552,42 +566,7 @@
 
         </main>
     </div>
-</div>{{-- end lg:flex --}}
-
-
-{{-- ══════════════════════════════════════════════════════
-     MOBILE CONTENT AREA  (< lg)
-     ══════════════════════════════════════════════════════ --}}
-<div class="lg:hidden bg-[#F2F2F2] min-h-screen pt-14 pb-20 relative" aria-live="polite" aria-busy="false" data-page-content>
-    <div class="navigation-skeleton absolute inset-0 z-10 bg-[#F2F2F2]/95 px-4 py-[72px]" data-navigation-skeleton>
-        <span class="sr-only">Loading page content</span>
-        <x-skeleton.page />
-    </div>
-    <div class="page-content" data-page-content-body>
-
-    @if(session()->has('success'))
-        <div class="mx-4 mt-4 flex items-center gap-3 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-700"
-             x-data="{ show: true }" x-show="show" x-transition>
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
-            <span class="flex-1 font-semibold text-[13px]">{{ session('success') }}</span>
-            <button @click="show=false"><svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg></button>
-        </div>
-    @endif
-
-    @if(session()->has('error'))
-        <div class="mx-4 mt-4 flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-2xl text-red-700"
-             x-data="{ show: true }" x-show="show" x-transition>
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
-            <span class="flex-1 font-semibold text-[13px]">{{ session('error') }}</span>
-            <button @click="show=false"><svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg></button>
-        </div>
-    @endif
-
-    <div class="px-4 py-4">
-        {{ $slot }}
-    </div>
-    </div>
-</div>
+</div>{{-- end responsive app shell --}}
 
 @livewireScripts
 <script src="/offline-sync.js"></script>

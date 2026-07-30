@@ -7,6 +7,7 @@ use App\Models\Expense;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OwnerDrawal;
+use App\Models\CompensationRecord;
 use Carbon\Carbon;
 
 class FinanceService
@@ -67,6 +68,11 @@ class FinanceService
         // Pending expenses or obligations (if any)
         $pendingExpenses = (float) Expense::where('status', 'pending')->sum('amount');
 
-        return max(0.00, $currentCash - $pendingExpenses);
+        return max(0.00, $currentCash - $pendingExpenses - static::getCompensationCommitments());
+    }
+
+    public static function getCompensationCommitments(): float
+    {
+        return (float) CompensationRecord::whereIn('status', ['approved', 'payable'])->sum('amount');
     }
 }

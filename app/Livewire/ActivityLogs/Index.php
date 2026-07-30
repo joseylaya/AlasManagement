@@ -17,6 +17,11 @@ class Index extends Component
     public function render()
     {
         $query = ActivityLog::with('user');
+        $isStaff = auth()->user()->isStaff();
+
+        if ($isStaff) {
+            $query->where('user_id', auth()->id());
+        }
 
         if (!empty($this->search)) {
             $query->where(function ($q) {
@@ -25,12 +30,14 @@ class Index extends Component
             });
         }
 
-        if (!empty($this->selectedUser)) {
+        if (!$isStaff && !empty($this->selectedUser)) {
             $query->where('user_id', $this->selectedUser);
         }
 
         $logs = $query->latest('id')->paginate(15);
-        $users = User::all();
+        $users = $isStaff
+            ? collect()
+            : User::all();
 
         return view('livewire.activity-logs.index', [
             'logs' => $logs,
