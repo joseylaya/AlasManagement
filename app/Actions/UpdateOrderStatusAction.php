@@ -11,7 +11,22 @@ class UpdateOrderStatusAction
 {
     public static function execute(Order $order, string $newStatus, ?User $user = null): Order
     {
-        $userId = $user ? $user->id : Auth::id();
+        $actor = $user ?? Auth::user();
+        if (! $actor || ! $order->canTransitionStatus($actor)) {
+            abort(403, 'You do not have permission to update this order.');
+        }
+        $userId = $actor->id;
+
+        $allowedTransitions = [
+            'pending' => ['confirmed'],
+            'confirmed' => ['preparing'],
+            'preparing' => ['packed'],
+            'packed' => $order->delivery_method === 'meetup' ? ['completed'] : ['shipped'],
+            'shipped' => ['completed'],
+        ];
+        if (! in_array($newStatus, $allowedTransitions[$order->order_status] ?? [], true) && $newStatus !== 'cancelled') {
+            throw new \Exception("{$newStatus} is not a valid next status for this order.");
+        }
 
         if ($newStatus === 'completed') {
             return CompleteOrderAction::execute($order, User::find($userId));

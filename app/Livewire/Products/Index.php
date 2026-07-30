@@ -17,6 +17,7 @@ class Index extends Component
 
     public function archiveProduct(int $productId): void
     {
+        abort_unless(auth()->user()->canManageProducts(), 403);
         $product = Product::findOrFail($productId);
         ArchiveProductAction::execute($product);
         session()->flash('success', "Product {$product->product_name} was archived successfully.");

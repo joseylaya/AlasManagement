@@ -11,7 +11,11 @@ class ArchiveProductAction
 {
     public static function execute(Product $product, ?User $user = null): Product
     {
-        $userId = $user ? $user->id : Auth::id();
+        $actor = $user ?? Auth::user();
+        if (! $actor || ! $actor->canManageProducts()) {
+            abort(403, 'You do not have permission to archive products.');
+        }
+        $userId = $actor->id;
 
         $product->update([
             'status' => 'archived',

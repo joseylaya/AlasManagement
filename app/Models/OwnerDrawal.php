@@ -12,10 +12,16 @@ class OwnerDrawal extends Model
 
     protected $fillable = [
         'drawal_number',
+        'client_uuid',
         'user_id',
         'amount',
         'drawal_date',
         'reason',
+        'payment_source',
+        'remarks',
+        'record_version',
+        'server_updated_at',
+        'sync_source',
         'status',
         'created_by',
         'updated_by',
@@ -24,6 +30,7 @@ class OwnerDrawal extends Model
     protected $casts = [
         'amount' => 'decimal:2',
         'drawal_date' => 'date',
+        'server_updated_at' => 'datetime',
     ];
 
     public function user()

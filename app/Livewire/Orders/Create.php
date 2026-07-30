@@ -18,8 +18,10 @@ class Create extends Component
     public string $meetup_location = '';
     public string $payment_method = 'cash';
     public string $payment_status = 'pending';
-    public string $order_status = 'pending';
     public string $notes = '';
+
+    // Order status is only editable by Manager/Owner
+    public string $order_status = 'pending';
 
     // Order Line Items Array
     public array $cartItems = [];
@@ -125,6 +127,8 @@ class Create extends Component
 
         return view('livewire.orders.create', [
             'products' => $products,
+            'isStaff'  => auth()->user()->isStaff(),
+            'canSetStatus' => auth()->user()->canManageOrderFulfillment(),
         ])->layout('layouts.app', ['pageHeader' => 'Create New Order']);
     }
 }

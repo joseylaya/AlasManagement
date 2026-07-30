@@ -24,8 +24,19 @@
     </div>
 
     <!-- Inventory Table Card -->
+    <div class="md:hidden space-y-3">
+        @forelse($inventories as $inv)
+            <article class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                <div class="flex items-start justify-between gap-3"><div><h3 class="text-[14px] font-bold text-slate-900">{{ $inv->product->product_name ?? 'N/A' }}</h3><p class="mt-1 text-[11px] font-mono text-slate-500">{{ $inv->product->sku ?? 'N/A' }}</p></div><span class="rounded-full px-2.5 py-1 text-[11px] font-bold {{ $inv->is_low_stock ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700' }}">{{ $inv->is_low_stock ? 'Low stock' : 'In stock' }}</span></div>
+                <p class="mt-3 text-[13px] text-slate-700"><strong>{{ $inv->current_stock }}</strong> available · minimum {{ $inv->min_stock_threshold }}</p>
+                <div class="mt-4 flex gap-2">@if($canAdjustInventory)<button type="button" wire:click="openAddStockModal({{ $inv->product_id }})" class="min-h-[44px] rounded-xl bg-amber-50 px-3 text-[12px] font-bold text-amber-800">＋ Restock</button><button type="button" wire:click="openAdjustStockModal({{ $inv->product_id }})" class="min-h-[44px] rounded-xl bg-slate-100 px-3 text-[12px] font-bold text-slate-800">✎ Adjust</button>@endif<button type="button" wire:click="viewHistory({{ $inv->product_id }})" class="min-h-[44px] px-2 text-[12px] font-bold text-blue-700">◷ History</button></div>
+            </article>
+        @empty
+            <div class="rounded-2xl bg-white p-8 text-center text-sm text-slate-500">No inventory records found.</div>
+        @endforelse
+    </div>
     <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
@@ -68,6 +79,7 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 text-right space-x-2">
+                                @if($canAdjustInventory)
                                 <button 
                                     wire:click="openAddStockModal({{ $inv->product_id }})" 
                                     class="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold rounded-lg border border-amber-200 transition-colors"
@@ -80,6 +92,7 @@
                                 >
                                     Adjust
                                 </button>
+                                @endif
                                 <button 
                                     wire:click="viewHistory({{ $inv->product_id }})" 
                                     class="px-2.5 py-1 text-blue-600 hover:text-blue-800 text-xs font-bold"
@@ -107,9 +120,9 @@
     </div>
 
     <!-- Restock / Adjust Stock Modal -->
-    @if($showMovementModal && $selectedProduct)
-        <div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 border border-slate-200">
+    @if($showMovementModal && $selectedProduct && $canAdjustInventory)
+        <div class="fixed inset-0 z-[90] bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 sm:p-4">
+            <div class="bg-white rounded-t-2xl sm:rounded-2xl max-w-md w-full max-h-[88vh] overflow-y-auto p-6 shadow-2xl space-y-5 border border-slate-200">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                     <h3 class="font-extrabold text-slate-900 text-base">
                         {{ $movementActionType === 'add' ? '➕ Restock Product' : '✏️ Adjust Inventory Count' }}
@@ -169,7 +182,7 @@
 
     <!-- Stock Movement History Modal -->
     @if($showHistoryModal && $historyProduct)
-        <div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="fixed inset-0 z-[90] bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 sm:p-4">
             <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 border border-slate-200 max-h-[85vh] flex flex-col">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div>

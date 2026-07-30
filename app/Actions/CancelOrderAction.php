@@ -23,7 +23,11 @@ class CancelOrderAction
             throw new Exception("Completed order {$order->order_number} cannot be cancelled directly. Use a refund instead.");
         }
 
-        $userId = $user ? $user->id : Auth::id();
+        $actor = $user ?? Auth::user();
+        if (! $actor || ! $actor->canCancelOrder()) {
+            throw new Exception('You do not have permission to cancel orders.');
+        }
+        $userId = $actor->id;
 
         return DB::transaction(function () use ($order, $reason, $userId) {
             $order->update([

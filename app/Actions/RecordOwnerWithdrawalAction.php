@@ -20,17 +20,31 @@ class RecordOwnerWithdrawalAction
             throw new Exception("Owner withdrawal amount must be greater than zero.");
         }
 
-        $userId = $user ? $user->id : Auth::id();
+        $actor = $user ?? Auth::user();
+        if (! $actor || ! $actor->canRecordWithdrawals()) {
+            throw new Exception('Only the Owner can record owner withdrawals.');
+        }
+        $userId = $actor->id;
+
+        if (! empty($data['client_uuid']) && ($existing = OwnerDrawal::where('client_uuid', $data['client_uuid'])->first())) {
+            return $existing;
+        }
 
         return DB::transaction(function () use ($data, $amount, $userId) {
             // FIX: Create drawal first, use real auto-increment ID for drawal number
             $drawal = OwnerDrawal::create([
                 'drawal_number' => 'PENDING',
+                'client_uuid'   => $data['client_uuid'] ?? null,
                 'user_id'       => $userId,
                 'amount'        => $amount,
                 'drawal_date'   => $data['drawal_date'] ?? Carbon::today(),
                 'reason'        => $data['reason'] ?? 'Owner Cash Withdrawal',
+                'payment_source'=> $data['payment_source'] ?? 'cash',
+                'remarks'       => $data['remarks'] ?? null,
                 'status'        => 'completed',
+                'record_version'=> 1,
+                'server_updated_at' => now(),
+                'sync_source'   => $data['sync_source'] ?? 'online',
                 'created_by'    => $userId,
                 'updated_by'    => $userId,
             ]);
@@ -43,10 +57,12 @@ class RecordOwnerWithdrawalAction
                 'transaction_number' => 'PENDING',
                 'user_id'            => $userId,
                 'type'               => 'owner_withdrawal',
+                'direction'          => 'cash_out',
                 'amount'             => -$amount,
                 'owner_drawal_id'    => $drawal->id,
                 'description'        => "Owner Withdrawal {$drawalNumber}: {$drawal->reason}",
                 'transaction_date'   => Carbon::now(),
+                'sync_source'        => $data['sync_source'] ?? 'online',
                 'created_by'         => $userId,
                 'updated_by'         => $userId,
             ]);
@@ -55,7 +71,8 @@ class RecordOwnerWithdrawalAction
             ActivityLogService::log(
                 'Owner Withdrawal Recorded',
                 "Recorded owner cash withdrawal {$drawalNumber} of ₱" . number_format($amount, 2) . ". (Note: Does not affect operating profit)",
-                $drawal
+                $drawal,
+                ['client_uuid' => $drawal->client_uuid, 'sync_source' => $drawal->sync_source]
             );
 
             return $drawal;

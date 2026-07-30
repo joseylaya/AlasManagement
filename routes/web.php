@@ -1,7 +1,6 @@
 <?php
 
 use App\Livewire\ActivityLogs\Index as ActivityLogsIndex;
-
 use App\Livewire\Auth\Login;
 use App\Livewire\Dashboard\Index as DashboardIndex;
 use App\Livewire\Finance\Index as FinanceIndex;
@@ -17,13 +16,14 @@ use App\Livewire\Settings\Index as SettingsIndex;
 use App\Livewire\Users\Index as UsersIndex;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\OfflineSyncController;
 
-// Guest Routes
+// ─── Guest Routes ────────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
     Route::get('/login', Login::class)->name('login');
 });
 
-// Logout Route
+// ─── Logout ──────────────────────────────────────────────────────
 Route::post('/logout', function () {
     Auth::logout();
     session()->invalidate();
@@ -31,36 +31,52 @@ Route::post('/logout', function () {
     return redirect()->route('login');
 })->name('logout');
 
-// Authenticated Routes
+// ─── Authenticated Routes ─────────────────────────────────────────
 Route::middleware('auth')->group(function () {
+
+    Route::post('/sync/orders', [OfflineSyncController::class, 'order'])->name('sync.orders');
+    Route::post('/sync/owner-withdrawals', [OfflineSyncController::class, 'ownerWithdrawal'])->name('sync.owner-withdrawals');
+
+    // Dashboard (all roles)
     Route::get('/', DashboardIndex::class)->name('dashboard');
     Route::get('/dashboard', DashboardIndex::class);
 
-    // Products Catalog
+    // ─── Products — All roles can VIEW; Manager/Owner can CREATE/EDIT
     Route::get('/products', ProductsIndex::class)->name('products.index');
-    Route::get('/products/create', ProductsCreate::class)->name('products.create');
-    Route::get('/products/{product}/edit', ProductsEdit::class)->name('products.edit');
+    Route::get('/products/create', ProductsCreate::class)
+        ->middleware('role:owner,manager')
+        ->name('products.create');
+    Route::get('/products/{product}/edit', ProductsEdit::class)
+        ->middleware('role:owner,manager')
+        ->name('products.edit');
 
-    // Inventory Control
+    // ─── Inventory — All roles can VIEW
     Route::get('/inventory', InventoryIndex::class)->name('inventory.index');
 
-    // Orders & Sales
+    // ─── Orders — All roles can view and create; approval handled in Livewire
     Route::get('/orders', OrdersIndex::class)->name('orders.index');
     Route::get('/orders/create', OrdersCreate::class)->name('orders.create');
     Route::get('/orders/{id}', OrdersShow::class)->name('orders.show');
 
-    // Finance & Cash Flow
-    Route::get('/finance', FinanceIndex::class)->name('finance.index');
+    // ─── Finance — all roles may view the permitted, read-only ledger
+    Route::get('/finance', FinanceIndex::class)
+        ->name('finance.index');
 
-    // Reports
-    Route::get('/reports', ReportsIndex::class)->name('reports.index');
+    // ─── Reports / Analytics — Owner + Manager only
+    Route::get('/reports', ReportsIndex::class)
+        ->middleware('role:owner,manager')
+        ->name('reports.index');
 
-    // Activity Logs
+    // ─── Activity Logs — All roles (read-only for Staff)
     Route::get('/activity-logs', ActivityLogsIndex::class)->name('activity-logs.index');
 
-    // Users Management
-    Route::get('/users', UsersIndex::class)->name('users.index');
+    // ─── Users Management — Owner only
+    Route::get('/users', UsersIndex::class)
+        ->middleware('role:owner')
+        ->name('users.index');
 
-    // Settings
-    Route::get('/settings', SettingsIndex::class)->name('settings.index');
+    // ─── Settings — Owner only
+    Route::get('/settings', SettingsIndex::class)
+        ->middleware('role:owner')
+        ->name('settings.index');
 });

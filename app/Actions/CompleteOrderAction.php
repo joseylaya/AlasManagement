@@ -23,7 +23,11 @@ class CompleteOrderAction
             throw new Exception("Cancelled order {$order->order_number} cannot be marked as completed.");
         }
 
-        $userId = $user ? $user->id : Auth::id();
+        $actor = $user ?? Auth::user();
+        if (! $actor || ! $order->canTransitionStatus($actor)) {
+            throw new Exception('You do not have permission to complete this order.');
+        }
+        $userId = $actor->id;
 
         return DB::transaction(function () use ($order, $userId) {
             $order->update([
@@ -32,23 +36,7 @@ class CompleteOrderAction
                 'updated_by'    => $userId,
             ]);
 
-            // Create Cash Transaction if not already created for this order
-            $existingTx = CashTransaction::where('order_id', $order->id)->first();
-            if (!$existingTx) {
-                // FIX: Create first, then update number from real auto-increment ID
-                $cashTx = CashTransaction::create([
-                    'transaction_number' => 'PENDING',
-                    'user_id'            => $userId,
-                    'type'               => 'sale',
-                    'amount'             => $order->total_amount,
-                    'order_id'           => $order->id,
-                    'description'        => "Payment received for completed order {$order->order_number}",
-                    'transaction_date'   => Carbon::now(),
-                    'created_by'         => $userId,
-                    'updated_by'         => $userId,
-                ]);
-                $cashTx->update(['transaction_number' => 'CTX-' . str_pad($cashTx->id, 6, '0', STR_PAD_LEFT)]);
-            }
+            RecordSaleCashTransactionAction::execute($order->fresh(), User::findOrFail($userId));
 
             ActivityLogService::log(
                 'Order Completed',

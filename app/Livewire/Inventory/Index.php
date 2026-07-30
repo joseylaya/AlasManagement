@@ -37,6 +37,7 @@ class Index extends Component
 
     public function openAddStockModal(int $productId): void
     {
+        abort_unless(auth()->user()->canAdjustInventory(), 403);
         $this->selectedProductId = $productId;
         $this->movementActionType = 'add';
         $this->stockQuantity = 10;
@@ -47,6 +48,7 @@ class Index extends Component
 
     public function openAdjustStockModal(int $productId): void
     {
+        abort_unless(auth()->user()->canAdjustInventory(), 403);
         $product = Product::with('inventory')->findOrFail($productId);
         $this->selectedProductId = $productId;
         $this->movementActionType = 'adjust';
@@ -58,6 +60,7 @@ class Index extends Component
 
     public function processStockMovement(): void
     {
+        abort_unless(auth()->user()->canAdjustInventory(), 403);
         $this->validate();
 
         $product = Product::findOrFail($this->selectedProductId);
@@ -117,6 +120,7 @@ class Index extends Component
             'inventories' => $inventories,
             'selectedProduct' => $selectedProduct,
             'movementsHistory' => $movementsHistory,
+            'canAdjustInventory' => auth()->user()->canAdjustInventory(),
         ])->layout('layouts.app', ['pageHeader' => 'Stock & Inventory Control']);
     }
 }

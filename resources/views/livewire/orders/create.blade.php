@@ -5,7 +5,7 @@
             <h2 class="text-lg font-extrabold text-slate-900">Create Customer Order</h2>
             <p class="text-xs text-slate-500">Record a new sales transaction with automatic stock deduction and cash logging</p>
         </div>
-        <a href="{{ route('orders.index') }}" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors">
+        <a href="{{ route('orders.index') }}" wire:navigate class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors">
             ← Back to Orders
         </a>
     </div>
@@ -172,9 +172,9 @@
                 </div>
 
                 <div class="pt-4">
-                    <button 
-                        type="button" 
-                        wire:click="saveOrder" 
+                    <button
+                        type="button"
+                        @click="if (!navigator.onLine) { window.AlasOffline.queue('sale', { customer_name: $wire.customer_name, customer_phone: $wire.customer_phone, customer_email: $wire.customer_email, delivery_method: $wire.delivery_method, shipping_address: $wire.shipping_address, meetup_date: $wire.meetup_date, meetup_location: $wire.meetup_location, payment_method: $wire.payment_method, payment_status: $wire.payment_status, order_status: $wire.order_status, notes: $wire.notes, items: @js($cartItems) }); } else { $wire.saveOrder(); }"
                         class="w-full py-3 px-4 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-sm rounded-xl shadow-md transition-colors"
                     >
                         Save & Create Order

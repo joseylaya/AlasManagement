@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'ALAS OS — Operational Suite' }}</title>
     <meta name="description" content="ALAS OS — Inventory, Orders & Finance Control">
 
@@ -22,16 +23,32 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 4px; }
         * { -webkit-tap-highlight-color: transparent; }
+        [x-cloak] { display: none !important; }
         .card-press:active { transform: scale(0.98); }
         @keyframes grow { from { width: 0 } }
         .progress-bar { animation: grow 0.8s ease-out; }
+        @keyframes skeleton-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .animate-skeleton { background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%); background-size: 200% 100%; animation: skeleton-shimmer 1.4s ease-in-out infinite; }
+        .navigation-skeleton { opacity: 0; pointer-events: none; transition: opacity 120ms ease; }
+        .page-content { transition: opacity 140ms ease, transform 140ms ease; }
+        .is-navigating .navigation-skeleton { opacity: 1; pointer-events: auto; }
+        .is-navigating .page-content { opacity: 0; transform: translateY(4px); pointer-events: none; }
+        @media (prefers-reduced-motion: reduce) { .animate-skeleton, .page-content, .navigation-skeleton { animation: none; transition: none; } }
 
         /* Mobile bottom nav safe area */
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
-        /* Mobile: dark scrollbar */
+        /* Mobile navigation stays in the same light visual system as the desktop app. */
         @media (max-width: 1023px) {
-            ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); }
+            ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); }
+            aside.lg\\:hidden, header.lg\\:hidden, nav.lg\\:hidden { background: #ffffff !important; border-color: #e8e8e8 !important; }
+            aside.lg\\:hidden .text-white, header.lg\\:hidden .text-white { color: #111111 !important; }
+            aside.lg\\:hidden .text-white\\/60, aside.lg\\:hidden .text-white\\/40, aside.lg\\:hidden .text-white\\/30,
+            nav.lg\\:hidden .text-white\\/40, nav.lg\\:hidden .text-white\\/30 { color: #666666 !important; }
+            aside.lg\\:hidden .border-white\\/\\[0\\.08\\], header.lg\\:hidden .border-white\\/\\[0\\.06\\], nav.lg\\:hidden .border-white\\/\\[0\\.08\\] { border-color: #e8e8e8 !important; }
+            aside.lg\\:hidden .bg-white\\/10 { background: #f5f5f5 !important; }
+            nav.lg\\:hidden .bg-white { background: #111111 !important; }
+            nav.lg\\:hidden .bg-white + svg, nav.lg\\:hidden .bg-white svg { color: #ffffff !important; }
         }
     </style>
 </head>
@@ -41,7 +58,21 @@
      DESKTOP: Light bg + fixed sidebar      (>= lg)
      ═══════════════════════════════════════════════════════════ --}}
 <body class="h-full overflow-x-hidden bg-[#F2F2F2] lg:bg-[#F2F2F2]"
-      x-data="{ drawerOpen: false }">
+      x-data="{ drawerOpen: false, notificationsOpen: false }"
+      @keydown.escape.window="notificationsOpen = false">
+
+@php
+    $_notifications = auth()->check()
+        ? \App\Models\Notification::where('user_id', auth()->id())->latest()->take(10)->get()
+        : collect();
+    $_unreadNotificationCount = $_notifications->where('is_read', false)->count();
+@endphp
+<div x-data="{ online: navigator.onLine, pending: 0 }" @alas-sync-status.window="online = $event.detail.online; pending = $event.detail.pending" class="fixed inset-x-0 top-14 z-40 lg:top-0">
+    <div x-show="!online || pending" x-cloak class="mx-auto max-w-3xl rounded-b-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-center text-[12px] font-semibold text-amber-900">
+        <span x-text="!online ? 'You are offline. New sales and Owner Withdrawals will be saved on this device.' : `${pending} transaction${pending === 1 ? '' : 's'} waiting to synchronize.`"></span>
+        <button type="button" x-show="online && pending" @click="window.AlasOffline.sync()" class="ml-2 underline">Sync now</button>
+    </div>
+</div>
 
 {{-- ══════════════════════════════════════════════════════
      MOBILE-ONLY: Drawer Overlay + Left Drawer + Top Bar + Bottom Nav
@@ -82,7 +113,7 @@
         @php $_lowStockCount = \App\Models\Inventory::whereColumn('current_stock','<=','min_stock_threshold')->count();
                $_pendingOrders = \App\Models\Order::where('order_status','pending')->count(); @endphp
 
-        <a href="{{ route('dashboard') }}" @click="drawerOpen=false"
+        <a href="{{ route('dashboard') }}" wire:navigate @click="drawerOpen=false"
            class="flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] font-semibold transition-all
                   {{ request()->routeIs('dashboard') ? 'bg-white text-[#111111]' : 'text-white/60 hover:bg-white/10 hover:text-white' }}">
             <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -92,7 +123,7 @@
             Dashboard
         </a>
 
-        <a href="{{ route('products.index') }}" @click="drawerOpen=false"
+        <a href="{{ route('products.index') }}" wire:navigate @click="drawerOpen=false"
            class="flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] font-semibold transition-all
                   {{ request()->routeIs('products.*') ? 'bg-white text-[#111111]' : 'text-white/60 hover:bg-white/10 hover:text-white' }}">
             <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -101,7 +132,7 @@
             Products
         </a>
 
-        <a href="{{ route('inventory.index') }}" @click="drawerOpen=false"
+        <a href="{{ route('inventory.index') }}" wire:navigate @click="drawerOpen=false"
            class="flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] font-semibold transition-all
                   {{ request()->routeIs('inventory.*') ? 'bg-white text-[#111111]' : 'text-white/60 hover:bg-white/10 hover:text-white' }}">
             <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -113,7 +144,7 @@
             @endif
         </a>
 
-        <a href="{{ route('orders.index') }}" @click="drawerOpen=false"
+        <a href="{{ route('orders.index') }}" wire:navigate @click="drawerOpen=false"
            class="flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] font-semibold transition-all
                   {{ request()->routeIs('orders.*') ? 'bg-white text-[#111111]' : 'text-white/60 hover:bg-white/10 hover:text-white' }}">
             <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -125,8 +156,8 @@
             @endif
         </a>
 
-        @if(auth()->check() && auth()->user()->canAccessFinance())
-        <a href="{{ route('finance.index') }}" @click="drawerOpen=false"
+        @if(auth()->check() && auth()->user()->canViewFinance())
+        <a href="{{ route('finance.index') }}" wire:navigate @click="drawerOpen=false"
            class="flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] font-semibold transition-all
                   {{ request()->routeIs('finance.*') ? 'bg-white text-[#111111]' : 'text-white/60 hover:bg-white/10 hover:text-white' }}">
             <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -135,7 +166,7 @@
             Finance
         </a>
 
-        <a href="{{ route('reports.index') }}" @click="drawerOpen=false"
+        <a href="{{ route('reports.index') }}" wire:navigate @click="drawerOpen=false"
            class="flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] font-semibold transition-all
                   {{ request()->routeIs('reports.*') ? 'bg-white text-[#111111]' : 'text-white/60 hover:bg-white/10 hover:text-white' }}">
             <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -147,7 +178,7 @@
 
         <div class="!my-4 border-t border-white/[0.08]"></div>
 
-        <a href="{{ route('activity-logs.index') }}" @click="drawerOpen=false"
+        <a href="{{ route('activity-logs.index') }}" wire:navigate @click="drawerOpen=false"
            class="flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] font-semibold transition-all
                   {{ request()->routeIs('activity-logs.*') ? 'bg-white text-[#111111]' : 'text-white/60 hover:bg-white/10 hover:text-white' }}">
             <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -157,7 +188,7 @@
         </a>
 
         @if(auth()->check() && auth()->user()->isOwner())
-        <a href="{{ route('users.index') }}" @click="drawerOpen=false"
+        <a href="{{ route('users.index') }}" wire:navigate @click="drawerOpen=false"
            class="flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] font-semibold transition-all
                   {{ request()->routeIs('users.*') ? 'bg-white text-[#111111]' : 'text-white/60 hover:bg-white/10 hover:text-white' }}">
             <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -168,7 +199,8 @@
         </a>
         @endif
 
-        <a href="{{ route('settings.index') }}" @click="drawerOpen=false"
+        @if(auth()->check() && auth()->user()->canManageSettings())
+        <a href="{{ route('settings.index') }}" wire:navigate @click="drawerOpen=false"
            class="flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] font-semibold transition-all
                   {{ request()->routeIs('settings.*') ? 'bg-white text-[#111111]' : 'text-white/60 hover:bg-white/10 hover:text-white' }}">
             <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -177,6 +209,7 @@
             </svg>
             Settings
         </a>
+        @endif
     </nav>
 
     <div class="border-t border-white/[0.08] px-5 py-4">
@@ -211,21 +244,47 @@
     <div class="flex-1 text-center">
         <div class="text-[13px] font-black text-white tracking-[0.02em]">ALAS OPERATING SYSTEM</div>
     </div>
-    <button class="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/10 transition-colors relative flex-shrink-0">
+    <button type="button" @click="notificationsOpen = true" :aria-expanded="notificationsOpen.toString()" aria-controls="mobile-notifications"
+            class="w-11 h-11 flex items-center justify-center rounded-xl hover:bg-white/10 transition-colors relative flex-shrink-0">
+        <span class="sr-only">Open notifications</span>
         <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
         </svg>
-        @if(isset($_lowStockCount) && $_lowStockCount > 0)
+        @if($_unreadNotificationCount > 0)
             <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-[1.5px] border-[#1A1A1E]"></span>
         @endif
     </button>
 </header>
 
+{{-- Mobile notification bottom sheet --}}
+<div id="mobile-notifications" x-show="notificationsOpen" x-cloak class="lg:hidden fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Notifications">
+    <div class="absolute inset-0 bg-black/30" @click="notificationsOpen = false" x-transition.opacity></div>
+    <section class="absolute inset-x-0 bottom-0 max-h-[78vh] rounded-t-3xl bg-white shadow-2xl" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
+        <div class="flex items-center justify-between border-b border-[#E8E8E8] px-5 py-4">
+            <div><h2 class="text-[16px] font-bold text-[#111111]">Notifications</h2><p class="text-[12px] text-[#777777]">{{ $_unreadNotificationCount ? $_unreadNotificationCount . ' unread' : 'You’re all caught up' }}</p></div>
+            <button type="button" @click="notificationsOpen = false" class="min-h-[44px] min-w-[44px] rounded-xl text-[#555555]" aria-label="Close notifications">✕</button>
+        </div>
+        <div class="max-h-[60vh] overflow-y-auto p-3">
+            @forelse($_notifications as $notification)
+                @if($notification->link)
+                    <a href="{{ $notification->link }}" wire:navigate @click="notificationsOpen = false" class="mb-2 block rounded-2xl p-4 transition-colors {{ $notification->is_read ? 'bg-white' : 'bg-[#F5F7FA]' }}">
+                        <div class="flex gap-3"><span class="mt-1 h-2 w-2 flex-shrink-0 rounded-full {{ $notification->is_read ? 'bg-[#D0D0D0]' : 'bg-blue-500' }}"></span><div><p class="text-[13px] font-bold text-[#222222]">{{ $notification->title }}</p><p class="mt-1 text-[12px] leading-relaxed text-[#666666]">{{ $notification->message }}</p><p class="mt-2 text-[11px] text-[#999999]">{{ $notification->created_at->diffForHumans() }}</p></div></div>
+                    </a>
+                @else
+                    <div class="mb-2 rounded-2xl p-4 {{ $notification->is_read ? 'bg-white' : 'bg-[#F5F7FA]' }}"><p class="text-[13px] font-bold text-[#222222]">{{ $notification->title }}</p><p class="mt-1 text-[12px] leading-relaxed text-[#666666]">{{ $notification->message }}</p><p class="mt-2 text-[11px] text-[#999999]">{{ $notification->created_at->diffForHumans() }}</p></div>
+                @endif
+            @empty
+                <div class="px-5 py-12 text-center"><div class="text-[14px] font-semibold text-[#555555]">No notifications yet</div><p class="mt-1 text-[12px] text-[#888888]">Updates assigned to you will appear here.</p></div>
+            @endforelse
+        </div>
+    </section>
+</div>
+
 {{-- Mobile Bottom Navigation --}}
 <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#111111] border-t border-white/[0.08] pb-safe">
     <div class="flex items-center h-16 px-1">
 
-        <a href="{{ route('dashboard') }}" class="flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl">
+        <a href="{{ route('dashboard') }}" wire:navigate class="flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl">
             <div class="transition-all {{ request()->routeIs('dashboard') ? 'bg-white rounded-[10px] p-1.5' : 'p-1.5' }}">
                 <svg class="w-5 h-5 {{ request()->routeIs('dashboard') ? 'text-[#111111]' : 'text-white/40' }}" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
                     <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/>
@@ -235,7 +294,7 @@
             <span class="text-[10px] font-bold {{ request()->routeIs('dashboard') ? 'text-white' : 'text-white/30' }}">Dashboard</span>
         </a>
 
-        <a href="{{ route('orders.index') }}" class="flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl">
+        <a href="{{ route('orders.index') }}" wire:navigate class="flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl">
             <div class="relative transition-all {{ request()->routeIs('orders.*') ? 'bg-white rounded-[10px] p-1.5' : 'p-1.5' }}">
                 <svg class="w-5 h-5 {{ request()->routeIs('orders.*') ? 'text-[#111111]' : 'text-white/40' }}" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
                     <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
@@ -247,7 +306,7 @@
             <span class="text-[10px] font-bold {{ request()->routeIs('orders.*') ? 'text-white' : 'text-white/30' }}">Orders</span>
         </a>
 
-        <a href="{{ route('inventory.index') }}" class="flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl">
+        <a href="{{ route('inventory.index') }}" wire:navigate class="flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl">
             <div class="transition-all {{ request()->routeIs('inventory.*') ? 'bg-white rounded-[10px] p-1.5' : 'p-1.5' }}">
                 <svg class="w-5 h-5 {{ request()->routeIs('inventory.*') ? 'text-[#111111]' : 'text-white/40' }}" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
                     <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
@@ -256,8 +315,8 @@
             <span class="text-[10px] font-bold {{ request()->routeIs('inventory.*') ? 'text-white' : 'text-white/30' }}">Inventory</span>
         </a>
 
-        @if(auth()->check() && auth()->user()->canAccessFinance())
-        <a href="{{ route('finance.index') }}" class="flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl">
+        @if(auth()->check() && auth()->user()->canViewFinance())
+        <a href="{{ route('finance.index') }}" wire:navigate class="flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl">
             <div class="transition-all {{ request()->routeIs('finance.*') ? 'bg-white rounded-[10px] p-1.5' : 'p-1.5' }}">
                 <svg class="w-5 h-5 {{ request()->routeIs('finance.*') ? 'text-[#111111]' : 'text-white/40' }}" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
                     <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -266,7 +325,7 @@
             <span class="text-[10px] font-bold {{ request()->routeIs('finance.*') ? 'text-white' : 'text-white/30' }}">Finance</span>
         </a>
         @else
-        <a href="{{ route('reports.index') }}" class="flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl">
+        <a href="{{ route('reports.index') }}" wire:navigate class="flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl">
             <div class="transition-all {{ request()->routeIs('reports.*') ? 'bg-white rounded-[10px] p-1.5' : 'p-1.5' }}">
                 <svg class="w-5 h-5 {{ request()->routeIs('reports.*') ? 'text-[#111111]' : 'text-white/40' }}" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
                     <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
@@ -299,7 +358,7 @@
             @php $_lowStockCount = \App\Models\Inventory::whereColumn('current_stock','<=','min_stock_threshold')->count();
                    $_pendingOrders = \App\Models\Order::where('order_status','pending')->count(); @endphp
 
-            <a href="{{ route('dashboard') }}"
+            <a href="{{ route('dashboard') }}" wire:navigate
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all
                       {{ request()->routeIs('dashboard') ? 'bg-[#111111] text-white' : 'text-[#555555] hover:bg-[#F5F5F5] hover:text-[#111111]' }}">
                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -309,7 +368,7 @@
                 Dashboard
             </a>
 
-            <a href="{{ route('products.index') }}"
+            <a href="{{ route('products.index') }}" wire:navigate
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all
                       {{ request()->routeIs('products.*') ? 'bg-[#111111] text-white' : 'text-[#555555] hover:bg-[#F5F5F5] hover:text-[#111111]' }}">
                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -318,7 +377,7 @@
                 Products
             </a>
 
-            <a href="{{ route('inventory.index') }}"
+            <a href="{{ route('inventory.index') }}" wire:navigate
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all
                       {{ request()->routeIs('inventory.*') ? 'bg-[#111111] text-white' : 'text-[#555555] hover:bg-[#F5F5F5] hover:text-[#111111]' }}">
                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -330,7 +389,7 @@
                 @endif
             </a>
 
-            <a href="{{ route('orders.index') }}"
+            <a href="{{ route('orders.index') }}" wire:navigate
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all
                       {{ request()->routeIs('orders.*') ? 'bg-[#111111] text-white' : 'text-[#555555] hover:bg-[#F5F5F5] hover:text-[#111111]' }}">
                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -342,8 +401,8 @@
                 @endif
             </a>
 
-            @if(auth()->check() && auth()->user()->canAccessFinance())
-            <a href="{{ route('finance.index') }}"
+            @if(auth()->check() && auth()->user()->canViewFinance())
+            <a href="{{ route('finance.index') }}" wire:navigate
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all
                       {{ request()->routeIs('finance.*') ? 'bg-[#111111] text-white' : 'text-[#555555] hover:bg-[#F5F5F5] hover:text-[#111111]' }}">
                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -352,7 +411,7 @@
                 Finance
             </a>
 
-            <a href="{{ route('reports.index') }}"
+            <a href="{{ route('reports.index') }}" wire:navigate
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all
                       {{ request()->routeIs('reports.*') ? 'bg-[#111111] text-white' : 'text-[#555555] hover:bg-[#F5F5F5] hover:text-[#111111]' }}">
                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -364,7 +423,7 @@
 
             <div class="!my-4 border-t border-[#F0F0F0]"></div>
 
-            <a href="{{ route('activity-logs.index') }}"
+            <a href="{{ route('activity-logs.index') }}" wire:navigate
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all
                       {{ request()->routeIs('activity-logs.*') ? 'bg-[#111111] text-white' : 'text-[#555555] hover:bg-[#F5F5F5] hover:text-[#111111]' }}">
                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -374,7 +433,7 @@
             </a>
 
             @if(auth()->check() && auth()->user()->isOwner())
-            <a href="{{ route('users.index') }}"
+            <a href="{{ route('users.index') }}" wire:navigate
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all
                       {{ request()->routeIs('users.*') ? 'bg-[#111111] text-white' : 'text-[#555555] hover:bg-[#F5F5F5] hover:text-[#111111]' }}">
                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -385,7 +444,8 @@
             </a>
             @endif
 
-            <a href="{{ route('settings.index') }}"
+            @if(auth()->check() && auth()->user()->canManageSettings())
+            <a href="{{ route('settings.index') }}" wire:navigate
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all
                       {{ request()->routeIs('settings.*') ? 'bg-[#111111] text-white' : 'text-[#555555] hover:bg-[#F5F5F5] hover:text-[#111111]' }}">
                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -394,6 +454,7 @@
                 </svg>
                 Settings
             </a>
+            @endif
         </nav>
 
         {{-- User + Logout --}}
@@ -444,7 +505,7 @@
 
             {{-- Alerts badge --}}
             @if(isset($_lowStockCount) && $_lowStockCount > 0)
-            <a href="{{ route('inventory.index') }}"
+            <a href="{{ route('inventory.index') }}" wire:navigate
                class="flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-100 rounded-lg text-[12px] font-semibold text-red-600 hover:bg-red-100 transition-colors">
                 <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
                 {{ $_lowStockCount }} Low Stock
@@ -461,7 +522,12 @@
         </header>
 
         {{-- Desktop Content --}}
-        <main class="flex-1 p-6">
+        <main class="relative flex-1 p-6" aria-live="polite" aria-busy="false" data-page-content>
+            <div class="navigation-skeleton absolute inset-0 z-10 bg-[#F2F2F2]/95 p-6" data-navigation-skeleton>
+                <span class="sr-only">Loading page content</span>
+                <x-skeleton.page />
+            </div>
+            <div class="page-content" data-page-content-body>
 
             @if(session()->has('success'))
                 <div class="mb-5 flex items-center gap-3 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700"
@@ -482,6 +548,7 @@
             @endif
 
             {{ $slot }}
+            </div>
 
         </main>
     </div>
@@ -491,10 +558,15 @@
 {{-- ══════════════════════════════════════════════════════
      MOBILE CONTENT AREA  (< lg)
      ══════════════════════════════════════════════════════ --}}
-<div class="lg:hidden bg-[#1A1A1E] min-h-screen pt-14 pb-20">
+<div class="lg:hidden bg-[#F2F2F2] min-h-screen pt-14 pb-20 relative" aria-live="polite" aria-busy="false" data-page-content>
+    <div class="navigation-skeleton absolute inset-0 z-10 bg-[#F2F2F2]/95 px-4 py-[72px]" data-navigation-skeleton>
+        <span class="sr-only">Loading page content</span>
+        <x-skeleton.page />
+    </div>
+    <div class="page-content" data-page-content-body>
 
     @if(session()->has('success'))
-        <div class="mx-4 mt-4 flex items-center gap-3 px-4 py-3 bg-emerald-900/50 border border-emerald-600/40 rounded-2xl text-emerald-300"
+        <div class="mx-4 mt-4 flex items-center gap-3 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-700"
              x-data="{ show: true }" x-show="show" x-transition>
             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
             <span class="flex-1 font-semibold text-[13px]">{{ session('success') }}</span>
@@ -503,7 +575,7 @@
     @endif
 
     @if(session()->has('error'))
-        <div class="mx-4 mt-4 flex items-center gap-3 px-4 py-3 bg-red-900/50 border border-red-600/40 rounded-2xl text-red-300"
+        <div class="mx-4 mt-4 flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-2xl text-red-700"
              x-data="{ show: true }" x-show="show" x-transition>
             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
             <span class="flex-1 font-semibold text-[13px]">{{ session('error') }}</span>
@@ -514,8 +586,22 @@
     <div class="px-4 py-4">
         {{ $slot }}
     </div>
+    </div>
 </div>
 
 @livewireScripts
+<script src="/offline-sync.js"></script>
+<script>
+    window.AlasOffline?.setUser({{ auth()->id() ?? 'null' }});
+    document.addEventListener('livewire:navigating', () => {
+        document.documentElement.classList.add('is-navigating');
+        document.querySelectorAll('[data-page-content]').forEach((content) => content.setAttribute('aria-busy', 'true'));
+        window.scrollTo({ top: 0, behavior: 'auto' });
+    });
+    document.addEventListener('livewire:navigated', () => {
+        document.documentElement.classList.remove('is-navigating');
+        document.querySelectorAll('[data-page-content]').forEach((content) => content.setAttribute('aria-busy', 'false'));
+    });
+</script>
 </body>
 </html>

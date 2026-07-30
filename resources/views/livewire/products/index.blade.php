@@ -8,7 +8,7 @@
                 <p class="text-xs text-slate-500">Manage apparel products, prices, and variant SKUs</p>
             </div>
             @if(auth()->check() && (auth()->user()->isOwner() || auth()->user()->isManager()))
-            <a href="{{ route('products.create') }}" class="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-sm rounded-xl shadow-sm transition-colors flex items-center justify-center">
+            <a href="{{ route('products.create') }}" wire:navigate class="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-sm rounded-xl shadow-sm transition-colors flex items-center justify-center">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 Add New Product
             </a>
@@ -48,8 +48,22 @@
     </div>
 
     <!-- Products Table Card -->
+    <div class="md:hidden space-y-3">
+        @forelse($products as $product)
+            @php
+                $isLow = $product->inventory && $product->inventory->is_low_stock;
+            @endphp
+            <article class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                <div class="flex items-start justify-between gap-3"><div><h3 class="text-[14px] font-bold text-slate-900">{{ $product->product_name }}</h3><p class="mt-1 text-[11px] font-mono text-slate-500">{{ $product->sku }} · {{ $product->color ?? '—' }} / {{ $product->size ?? '—' }}</p></div><p class="text-[14px] font-black text-slate-900">₱{{ number_format($product->selling_price, 2) }}</p></div>
+                <div class="mt-3 flex items-center justify-between"><span class="text-[12px] text-slate-600">{{ $product->current_stock }} available</span><span class="rounded-full px-2.5 py-1 text-[11px] font-bold {{ $isLow ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700' }}">{{ $isLow ? 'Low stock' : 'In stock' }}</span></div>
+                @if(auth()->user()->canManageProducts())<div class="mt-4 flex gap-3"><a href="{{ route('products.edit', $product->id) }}" wire:navigate class="min-h-[44px] inline-flex items-center rounded-xl bg-slate-100 px-3 text-[12px] font-bold text-slate-800">✎ Edit product</a>@if($product->status !== 'archived')<button type="button" wire:click="archiveProduct({{ $product->id }})" wire:confirm="Archive {{ $product->product_name }}?" class="min-h-[44px] px-2 text-[12px] font-bold text-rose-700">⌫ Archive</button>@endif</div>@endif
+            </article>
+        @empty
+            <div class="rounded-2xl bg-white p-8 text-center text-sm text-slate-500">No products found matching your filters.</div>
+        @endforelse
+    </div>
     <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
@@ -94,7 +108,8 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-right space-x-2">
-                                <a href="{{ route('products.edit', $product->id) }}" class="text-xs font-bold text-blue-600 hover:text-blue-800">Edit</a>
+                                @if(auth()->user()->canManageProducts())
+                                <a href="{{ route('products.edit', $product->id) }}" wire:navigate class="text-xs font-bold text-blue-600 hover:text-blue-800">Edit</a>
                                 @if($product->status !== 'archived')
                                     <button 
                                         wire:click="archiveProduct({{ $product->id }})" 
@@ -103,6 +118,7 @@
                                     >
                                         Archive
                                     </button>
+                                @endif
                                 @endif
                             </td>
                         </tr>

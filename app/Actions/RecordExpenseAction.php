@@ -20,7 +20,11 @@ class RecordExpenseAction
             throw new Exception("Expense amount must be greater than zero.");
         }
 
-        $userId = $user ? $user->id : Auth::id();
+        $actor = $user ?? Auth::user();
+        if (! $actor || ! $actor->canModifyFinance()) {
+            throw new Exception('You do not have permission to record expenses.');
+        }
+        $userId = $actor->id;
 
         return DB::transaction(function () use ($data, $amount, $userId) {
             // FIX: Create expense first, use real auto-increment ID for expense number
@@ -45,10 +49,12 @@ class RecordExpenseAction
                 'transaction_number' => 'PENDING',
                 'user_id'            => $userId,
                 'type'               => 'expense',
+                'direction'          => 'cash_out',
                 'amount'             => -$amount,
                 'expense_id'         => $expense->id,
                 'description'        => "Expense {$expenseNumber}: {$expense->description}",
                 'transaction_date'   => Carbon::now(),
+                'sync_source'        => 'online',
                 'created_by'         => $userId,
                 'updated_by'         => $userId,
             ]);

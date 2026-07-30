@@ -1,5 +1,6 @@
 <div class="space-y-6">
 
+    @if($canAccessFinance)
     <!-- Financial KPI Summary Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <!-- Current Cash Balance -->
@@ -32,6 +33,12 @@
             <p class="text-xs text-slate-500 mt-1">Revenue - COGS - Expenses</p>
         </div>
     </div>
+    @else
+    <div class="bg-white border border-[#E8E8E8] rounded-2xl p-5 shadow-sm">
+        <h2 class="text-[15px] font-bold text-[#111111]">Finance ledger</h2>
+        <p class="text-[13px] text-[#666666] mt-1">You have read-only access to permitted transactions. Cash balances and financial reports are restricted to Managers and the Owner.</p>
+    </div>
+    @endif
 
     <!-- Header Actions & Cash Transactions Table -->
     <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
@@ -41,8 +48,9 @@
                 <p class="text-xs text-slate-500">Single source of truth for all business cash inflows and outflows</p>
             </div>
 
+            @if($canModifyFinance)
             <div class="flex items-center space-x-3">
-                <button 
+                <button type="button"
                     wire:click="$set('showExpenseModal', true)" 
                     class="px-4 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-bold text-sm rounded-xl shadow-sm transition-colors flex items-center"
                 >
@@ -50,9 +58,10 @@
                     Record Expense
                 </button>
 
-                @if(auth()->check() && auth()->user()->isOwner())
-                <button 
-                    wire:click="$set('showDrawalModal', true)" 
+                @if($canRecordWithdrawals)
+                <button
+                    type="button"
+                    @click="$event.stopImmediatePropagation(); if (!navigator.onLine) { window.AlasOffline.queueWithdrawal(); } else { $wire.set('showDrawalModal', true); }"
                     class="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm rounded-xl shadow-sm transition-colors flex items-center"
                 >
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
@@ -60,6 +69,7 @@
                 </button>
                 @endif
             </div>
+            @endif
         </div>
 
         <!-- Filter Bar -->
@@ -82,8 +92,21 @@
     </div>
 
     <!-- Ledger Table -->
+    <div class="md:hidden space-y-3">
+        @forelse($cashTransactions as $tx)
+            <article class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                <div class="flex items-start justify-between gap-3">
+                    <div><p class="text-[11px] font-mono font-bold text-slate-500">{{ $tx->transaction_number }}</p><p class="mt-1 text-[13px] font-semibold text-slate-900">{{ $tx->description }}</p></div>
+                    <p class="text-[15px] font-black {{ $tx->amount >= 0 ? 'text-emerald-700' : 'text-rose-700' }}">{{ $tx->amount >= 0 ? '+' : '−' }}₱{{ number_format(abs($tx->amount), 2) }}</p>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-600"><span class="rounded-full bg-slate-100 px-2.5 py-1 font-semibold">{{ str_replace('_', ' ', $tx->type) }}</span><span>{{ $tx->transaction_date?->format('M j, Y') }}</span><span>Recorded by {{ $tx->user->name ?? 'System' }}</span></div>
+            </article>
+        @empty
+            <div class="rounded-2xl bg-white p-8 text-center text-sm text-slate-500">No cash transactions recorded.</div>
+        @endforelse
+    </div>
     <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
@@ -146,12 +169,12 @@
     </div>
 
     <!-- Record Expense Modal -->
-    @if($showExpenseModal)
-        <div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 border border-slate-200">
+    @if($showExpenseModal && $canModifyFinance)
+        <div class="fixed inset-0 z-[90] bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 sm:p-4">
+            <div class="bg-white rounded-t-2xl sm:rounded-2xl max-w-md w-full max-h-[88vh] overflow-y-auto p-6 shadow-2xl space-y-5 border border-slate-200">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                     <h3 class="font-extrabold text-slate-900 text-base">💸 Record Business Expense</h3>
-                    <button wire:click="$set('showExpenseModal', false)" class="text-slate-400 hover:text-slate-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                    <button type="button" wire:click="$set('showExpenseModal', false)" class="min-h-[44px] min-w-[44px] text-slate-400 hover:text-slate-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
                 </div>
 
                 <form wire:submit.prevent="saveExpense" class="space-y-4">
@@ -192,12 +215,12 @@
     @endif
 
     <!-- Record Owner Withdrawal Modal -->
-    @if($showDrawalModal)
-        <div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 border border-slate-200">
+    @if($showDrawalModal && $canRecordWithdrawals)
+        <div class="fixed inset-0 z-[90] bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 sm:p-4">
+            <div class="bg-white rounded-t-2xl sm:rounded-2xl max-w-md w-full max-h-[88vh] overflow-y-auto p-6 shadow-2xl space-y-5 border border-slate-200">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                     <h3 class="font-extrabold text-slate-900 text-base">👑 Record Owner Cash Withdrawal</h3>
-                    <button wire:click="$set('showDrawalModal', false)" class="text-slate-400 hover:text-slate-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                    <button type="button" wire:click="$set('showDrawalModal', false)" class="min-h-[44px] min-w-[44px] text-slate-400 hover:text-slate-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
                 </div>
 
                 <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs text-amber-900">

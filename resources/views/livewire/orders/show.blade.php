@@ -8,6 +8,7 @@
                     $statusColors = [
                         'pending' => 'bg-amber-50 text-amber-700 border-amber-200',
                         'confirmed' => 'bg-blue-50 text-blue-700 border-blue-200',
+                        'preparing' => 'bg-indigo-50 text-indigo-700 border-indigo-200',
                         'packed' => 'bg-purple-50 text-purple-700 border-purple-200',
                         'shipped' => 'bg-indigo-50 text-indigo-700 border-indigo-200',
                         'completed' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -21,7 +22,7 @@
             <p class="text-xs text-slate-500 mt-1">Created on {{ $order->created_at->format('F d, Y \a\t g:i A') }} by {{ $order->user->name ?? 'System' }}</p>
         </div>
 
-        <a href="{{ route('orders.index') }}" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors">
+        <a href="{{ route('orders.index') }}" wire:navigate class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors">
             ← Back to Queue
         </a>
     </div>
@@ -33,19 +34,23 @@
             <span class="text-sm font-semibold text-slate-800">Current Status: <span class="capitalize font-bold text-slate-900">{{ $order->order_status }}</span></span>
         </div>
 
-        <div class="flex items-center space-x-2">
+        <div class="flex flex-wrap items-center gap-2">
+            @if($canChangeStatus)
             @if($order->order_status === 'pending')
-                <button wire:click="updateStatus('confirmed')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow">Confirm Order</button>
+                <button type="button" wire:click="updateStatus('confirmed')" wire:loading.attr="disabled" class="min-h-[44px] px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow">Confirm Order</button>
             @elseif($order->order_status === 'confirmed')
-                <button wire:click="updateStatus('packed')" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow">Mark as Packed</button>
+                <button type="button" wire:click="updateStatus('preparing')" wire:loading.attr="disabled" class="min-h-[44px] px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow">Start Preparing</button>
+            @elseif($order->order_status === 'preparing')
+                <button type="button" wire:click="updateStatus('packed')" wire:loading.attr="disabled" class="min-h-[44px] px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow">Mark as Packed</button>
             @elseif($order->order_status === 'packed')
-                <button wire:click="updateStatus('shipped')" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow">Mark as Shipped</button>
+                <button type="button" wire:click="updateStatus('shipped')" wire:loading.attr="disabled" class="min-h-[44px] px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow">Mark as Shipped</button>
             @elseif($order->order_status === 'shipped')
-                <button wire:click="updateStatus('completed')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow">Complete Order & Record Cash</button>
+                <button type="button" wire:click="updateStatus('completed')" wire:loading.attr="disabled" class="min-h-[44px] px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow">Complete Order</button>
+            @endif
             @endif
 
-            @if(!in_array($order->order_status, ['completed', 'cancelled']))
-                <button wire:click="cancelOrder" wire:confirm="Cancel order and restore inventory stock?" class="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl">Cancel Order</button>
+            @if($canCancel)
+                <button type="button" wire:click="cancelOrder" wire:confirm="Cancel order and restore inventory stock?" wire:loading.attr="disabled" class="min-h-[44px] px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl">Cancel Order</button>
             @endif
         </div>
     </div>
@@ -104,7 +109,7 @@
                     @if($order->cashTransactions->isNotEmpty())
                         <span class="text-xs font-mono font-bold text-emerald-600">CTX: {{ $order->cashTransactions->first()->transaction_number }} (₱{{ number_format($order->cashTransactions->first()->amount, 2) }})</span>
                     @else
-                        <span class="text-xs text-slate-400">Pending order completion</span>
+                        <span class="text-xs text-slate-400">Payment has not been recorded yet</span>
                     @endif
                 </div>
                 @if($order->notes)

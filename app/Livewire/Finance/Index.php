@@ -44,6 +44,9 @@ class Index extends Component
 
     public function saveExpense(): void
     {
+        if (! auth()->user()->canModifyFinance()) {
+            abort(403);
+        }
         $this->validate([
             'expense_category_id' => 'required|exists:expense_categories,id',
             'expense_amount' => 'required|numeric|min:0.01',
@@ -69,6 +72,9 @@ class Index extends Component
 
     public function saveOwnerWithdrawal(): void
     {
+        if (! auth()->user()->canRecordWithdrawals()) {
+            abort(403);
+        }
         $this->validate([
             'drawal_amount' => 'required|numeric|min:0.01',
             'drawal_reason' => 'required|string|min:3|max:255',
@@ -91,11 +97,12 @@ class Index extends Component
 
     public function render()
     {
-        $currentCash = FinanceService::getCurrentCash();
-        $todayIncome = FinanceService::getTodayIncome();
-        $todayExpenses = FinanceService::getTodayExpenses();
-        $monthlyProfit = FinanceService::getMonthlyProfit();
-        $availableFunds = FinanceService::getAvailableBusinessFunds();
+        $canAccessFinance = auth()->user()->canAccessFinance();
+        $currentCash = $canAccessFinance ? FinanceService::getCurrentCash() : null;
+        $todayIncome = $canAccessFinance ? FinanceService::getTodayIncome() : null;
+        $todayExpenses = $canAccessFinance ? FinanceService::getTodayExpenses() : null;
+        $monthlyProfit = $canAccessFinance ? FinanceService::getMonthlyProfit() : null;
+        $availableFunds = $canAccessFinance ? FinanceService::getAvailableBusinessFunds() : null;
 
         $query = CashTransaction::with(['user', 'order', 'expense', 'ownerDrawal']);
 
@@ -121,6 +128,9 @@ class Index extends Component
             'availableFunds' => $availableFunds,
             'cashTransactions' => $cashTransactions,
             'expenseCategories' => $expenseCategories,
+            'canAccessFinance' => $canAccessFinance,
+            'canModifyFinance' => auth()->user()->canModifyFinance(),
+            'canRecordWithdrawals' => auth()->user()->canRecordWithdrawals(),
         ])->layout('layouts.app', ['pageHeader' => 'Finance & Cash Movement']);
     }
 }

@@ -12,14 +12,17 @@ class CashTransaction extends Model
 
     protected $fillable = [
         'transaction_number',
+        'client_uuid',
         'user_id',
         'type',
+        'direction',
         'amount',
         'order_id',
         'expense_id',
         'owner_drawal_id',
         'description',
         'transaction_date',
+        'sync_source',
         'created_by',
         'updated_by',
     ];
