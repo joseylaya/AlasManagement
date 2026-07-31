@@ -1,11 +1,11 @@
 <div class="max-w-5xl mx-auto space-y-6">
 
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
         <div>
             <h2 class="text-lg font-extrabold text-slate-900">Create Customer Order</h2>
             <p class="text-xs text-slate-500">Record a new sales transaction with automatic stock deduction and cash logging</p>
         </div>
-        <a href="{{ route('orders.index') }}" wire:navigate class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors">
+        <a href="{{ route('orders.index') }}" wire:navigate class="inline-flex min-h-[44px] items-center px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors">
             ← Back to Orders
         </a>
     </div>
@@ -16,7 +16,7 @@
         <div class="lg:col-span-2 space-y-6">
 
             <!-- Select Product Card -->
-            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+            <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-4 sm:p-6">
                 <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Add Products to Order</h3>
 
                 <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
@@ -37,8 +37,9 @@
                     </div>
 
                     <div class="flex items-end">
-                        <button type="button" wire:click="addItem" class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-sm rounded-xl shadow transition-colors">
-                            + Add Line
+                        <button type="button" wire:click="addItem" wire:loading.attr="disabled" wire:target="addItem" class="min-h-[44px] w-full py-2.5 bg-amber-500 hover:bg-amber-600 disabled:cursor-wait disabled:opacity-60 text-slate-950 font-bold text-sm rounded-xl shadow transition-colors">
+                            <span wire:loading.remove wire:target="addItem">+ Add Line</span>
+                            <span wire:loading wire:target="addItem" class="inline-flex items-center gap-2"><svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="8" stroke="currentColor" stroke-width="3"/><path class="opacity-90" fill="currentColor" d="M12 4a8 8 0 0 1 8 8h-3a5 5 0 0 0-5-5V4z"/></svg>Adding…</span>
                         </button>
                     </div>
                 </div>
@@ -51,7 +52,29 @@
                     <span class="text-xs font-bold text-slate-700">{{ count($cartItems) }} Item(s)</span>
                 </div>
 
-                <div class="overflow-x-auto">
+                <div class="divide-y divide-slate-100 md:hidden">
+                    @forelse($cartItems as $index => $item)
+                        <article class="space-y-3 p-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="truncate text-sm font-bold text-slate-900">{{ $item['name'] }}</p>
+                                    <p class="mt-0.5 font-mono text-[11px] text-slate-500">{{ $item['sku'] }}</p>
+                                </div>
+                                <p class="shrink-0 text-base font-black text-slate-900">₱{{ number_format($item['subtotal'], 2) }}</p>
+                            </div>
+                            <div class="flex items-center justify-between border-t border-slate-100 pt-3">
+                                <p class="text-xs text-slate-600">₱{{ number_format($item['unit_price'], 2) }} × <span class="font-bold">{{ $item['quantity'] }}</span></p>
+                                <button type="button" wire:click="removeItem({{ $index }})" class="min-h-[40px] rounded-xl px-3 text-xs font-bold text-rose-700 hover:bg-rose-50">Remove</button>
+                            </div>
+                        </article>
+                    @empty
+                        <div class="px-6 py-10 text-center text-sm text-slate-400">
+                            No items added yet. Choose a product above to begin.
+                        </div>
+                    @endforelse
+                </div>
+
+                <div class="hidden overflow-x-auto md:block">
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
@@ -87,7 +110,7 @@
                     </table>
                 </div>
 
-                <div class="p-6 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between sm:p-6">
                     <span class="text-sm font-bold text-slate-600">Grand Total Amount</span>
                     <span class="text-2xl font-black text-slate-900">₱{{ number_format($this->grandTotal, 2) }}</span>
                 </div>
@@ -97,7 +120,7 @@
 
         <!-- Right Col: Customer & Delivery Details Form -->
         <div class="space-y-6">
-            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+            <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-4 sm:p-6">
                 <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Customer & Delivery Info</h3>
 
                 <div>
@@ -105,7 +128,7 @@
                     <input type="text" wire:model="customer_name" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 focus:bg-white" placeholder="Walk-in Customer / Juan Cruz">
                 </div>
 
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Phone Number</label>
                         <input type="text" wire:model="customer_phone" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 focus:bg-white" placeholder="0917-000-0000">
@@ -140,7 +163,7 @@
                 <div class="border-t border-slate-100 pt-4 space-y-3">
                     <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Payment & Status</h3>
 
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
                             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Payment Method</label>
                             <select wire:model="payment_method" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500">
@@ -175,9 +198,12 @@
                     <button
                         type="button"
                         @click="if (!navigator.onLine) { window.AlasOffline.queue('sale', { customer_name: $wire.customer_name, customer_phone: $wire.customer_phone, customer_email: $wire.customer_email, delivery_method: $wire.delivery_method, shipping_address: $wire.shipping_address, meetup_date: $wire.meetup_date, meetup_location: $wire.meetup_location, payment_method: $wire.payment_method, payment_status: $wire.payment_status, order_status: $wire.order_status, notes: $wire.notes, items: @js($cartItems) }); } else { $wire.saveOrder(); }"
-                        class="w-full py-3 px-4 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-sm rounded-xl shadow-md transition-colors"
+                        wire:loading.attr="disabled"
+                        wire:target="saveOrder"
+                        class="min-h-[48px] w-full px-4 py-3 bg-amber-500 hover:bg-amber-600 disabled:cursor-wait disabled:opacity-60 text-slate-950 font-bold text-sm rounded-xl shadow-md transition-colors"
                     >
-                        Save & Create Order
+                        <span wire:loading.remove wire:target="saveOrder">Save & Create Order</span>
+                        <span wire:loading wire:target="saveOrder" class="inline-flex items-center gap-2"><svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="8" stroke="currentColor" stroke-width="3"/><path class="opacity-90" fill="currentColor" d="M12 4a8 8 0 0 1 8 8h-3a5 5 0 0 0-5-5V4z"/></svg>Saving order…</span>
                     </button>
                 </div>
             </div>

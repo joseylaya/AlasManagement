@@ -30,6 +30,10 @@ class Login extends Component
                 Auth::user()
             );
 
+            // Login changes the whole application shell (guest → authenticated).
+            // Use a normal redirect here so Alpine and the authenticated layout
+            // initialize from a clean document. SPA navigation is kept for links
+            // within the authenticated workspace.
             $this->redirectIntended(route('dashboard'));
             return;
         }

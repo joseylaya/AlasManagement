@@ -115,7 +115,7 @@ class Create extends Component
             $order = CreateOrderAction::execute($orderData, $this->cartItems);
 
             session()->flash('success', "Order {$order->order_number} created successfully for ₱" . number_format($order->total_amount, 2));
-            $this->redirect(route('orders.index'));
+            $this->redirect(route('orders.index'), navigate: true);
         } catch (Exception $e) {
             session()->flash('error', $e->getMessage());
         }

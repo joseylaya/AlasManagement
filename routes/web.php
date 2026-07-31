@@ -11,12 +11,15 @@ use App\Livewire\Orders\Show as OrdersShow;
 use App\Livewire\Products\Create as ProductsCreate;
 use App\Livewire\Products\Edit as ProductsEdit;
 use App\Livewire\Products\Index as ProductsIndex;
+use App\Livewire\PromotionActivities\Index as PromotionActivitiesIndex;
+use App\Livewire\Notifications\Manage as NotificationsManage;
 use App\Livewire\Reports\Index as ReportsIndex;
 use App\Livewire\Settings\Index as SettingsIndex;
 use App\Livewire\Users\Index as UsersIndex;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\OfflineSyncController;
+use App\Http\Controllers\NotificationController;
 
 // ─── Guest Routes ────────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
@@ -33,6 +36,11 @@ Route::post('/logout', function () {
 
 // ─── Authenticated Routes ─────────────────────────────────────────
 Route::middleware('auth')->group(function () {
+
+    Route::get('/notifications/{notification}/open', [NotificationController::class, 'open'])
+        ->name('notifications.open');
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'read'])
+        ->name('notifications.read');
 
     Route::post('/sync/orders', [OfflineSyncController::class, 'order'])->name('sync.orders');
     Route::post('/sync/owner-withdrawals', [OfflineSyncController::class, 'ownerWithdrawal'])->name('sync.owner-withdrawals');
@@ -69,6 +77,10 @@ Route::middleware('auth')->group(function () {
 
     // ─── Activity Logs — All roles (read-only for Staff)
     Route::get('/activity-logs', ActivityLogsIndex::class)->name('activity-logs.index');
+    Route::get('/promotion-activities', PromotionActivitiesIndex::class)->name('promotion-activities.index');
+    Route::get('/announcements', NotificationsManage::class)
+        ->middleware('role:owner,manager')
+        ->name('announcements.index');
 
     // ─── Users Management — Owner only
     Route::get('/users', UsersIndex::class)

@@ -49,7 +49,7 @@ class Create extends Component
         ]);
 
         session()->flash('success', "Product {$product->product_name} ({$product->sku}) created successfully!");
-        $this->redirect(route('products.index'));
+        $this->redirect(route('products.index'), navigate: true);
     }
 
     public function render()

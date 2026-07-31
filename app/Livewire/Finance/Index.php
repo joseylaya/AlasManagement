@@ -11,6 +11,7 @@ use App\Models\SalaryProfile;
 use App\Models\User;
 use App\Actions\PayCompensationAction;
 use App\Services\ActivityLogService;
+use App\Services\NotificationService;
 
 use App\Services\FinanceService;
 use Exception;
@@ -23,6 +24,8 @@ class Index extends Component
 
     public string $search = '';
     public string $selectedType = '';
+    public string $compensationStatus = '';
+    public ?int $highlightCompensationId = null;
 
     // Record Expense Modal State
     public bool $showExpenseModal = false;
@@ -54,6 +57,8 @@ class Index extends Component
             $this->expense_category_id = $firstCategory->id;
         }
         $this->compensation_user_id = User::where('status', 'active')->orderBy('name')->value('id');
+        $this->compensationStatus = request()->string('compensation_status')->value();
+        $this->highlightCompensationId = request()->integer('compensation') ?: null;
     }
 
     public function saveExpense(): void
@@ -124,7 +129,10 @@ class Index extends Component
         abort_unless(auth()->user()->isOwner(), 403); $record=CompensationRecord::findOrFail($recordId);
         if ($record->status !== 'pending_approval') { session()->flash('error','This compensation record is no longer awaiting approval.'); return; }
         $record->update(['status'=>'payable','approved_at'=>now(),'approved_by'=>auth()->id(),'posted_to_finance_at'=>now(),'updated_by'=>auth()->id()]);
-        ActivityLogService::log('Compensation Approved',"Approved {$record->record_number} as payable.",$record,['previous_status'=>'pending_approval','new_status'=>'payable']); session()->flash('success','Compensation is now payable and reserved from available funds.');
+        ActivityLogService::log('Compensation Approved',"Approved {$record->record_number} as payable.",$record,['previous_status'=>'pending_approval','new_status'=>'payable']);
+        $record->load('user');
+        NotificationService::notifyCompensationApproved($record);
+        session()->flash('success','Compensation is now payable and reserved from available funds.');
     }
 
     public function payCompensation(int $recordId): void
@@ -157,6 +165,9 @@ class Index extends Component
         $cashTransactions = $query->latest('transaction_date')->paginate(10);
         $expenseCategories = ExpenseCategory::where('status', 'active')->get();
         $compensationQuery = CompensationRecord::with('user')->latest('id');
+        if (in_array($this->compensationStatus, ['pending_approval', 'payable', 'paid'], true)) {
+            $compensationQuery->where('status', $this->compensationStatus);
+        }
         if (auth()->user()->isStaff()) $compensationQuery->where('user_id', auth()->id());
         if (auth()->user()->isManager()) $compensationQuery->whereHas('user', fn ($query) => $query->where('role', '!=', 'owner'));
         $compensationRecords = $compensationQuery->take(12)->get();

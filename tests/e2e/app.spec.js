@@ -69,6 +69,8 @@ test('owner can reach every production application area', async ({ page }) => {
         '/finance',
         '/reports',
         '/activity-logs',
+        '/promotion-activities',
+        '/announcements',
         '/users',
         '/settings',
     ];
@@ -78,6 +80,35 @@ test('owner can reach every production application area', async ({ page }) => {
         expect(response?.status(), `Expected ${route} to load for the owner`).toBe(200);
         await expect(page.locator('body')).not.toContainText('Server Error');
     }
+});
+
+test('owner can send an image announcement and staff can read it in a modal', async ({ browser }) => {
+    const ownerContext = await browser.newContext();
+    const ownerPage = await ownerContext.newPage();
+    await signIn(ownerPage, 'owner');
+    await ownerPage.goto('/announcements');
+
+    await ownerPage.getByRole('button', { name: /New announcement/ }).click();
+    await ownerPage.locator('input[wire\\:model="title"]').fill('New lookbook');
+    await ownerPage.locator('textarea[wire\\:model="message"]').fill('Please review the new ALAS clothing designs before your next shift.');
+    await ownerPage.locator('select[wire\\:model="target_role"]').selectOption('staff');
+    await ownerPage.locator('input[wire\\:model="image"]').setInputFiles('public/images/alas-logo.png');
+    await ownerPage.getByRole('button', { name: 'Send announcement' }).click();
+    await expect(ownerPage.getByText('Announcement sent to the selected recipients.')).toBeVisible();
+
+    const staffContext = await browser.newContext();
+    const staffPage = await staffContext.newPage();
+    await signIn(staffPage, 'staff');
+    await staffPage.getByRole('button', { name: 'Open notifications' }).click();
+    await staffPage.getByRole('banner').getByText('New lookbook', { exact: true }).click();
+
+    const reader = staffPage.getByRole('dialog', { name: 'Announcement' });
+    await expect(reader).toBeVisible();
+    await expect(reader).toContainText('Please review the new ALAS clothing designs');
+    await expect(reader.getByRole('img', { name: 'New lookbook' })).toBeVisible();
+
+    await ownerContext.close();
+    await staffContext.close();
 });
 
 test('manager can manage stock but cannot access owner-only administration', async ({ page }) => {

@@ -1,13 +1,13 @@
 <div class="space-y-6">
 
     <!-- Header & Filter -->
-    <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm sm:p-6 sm:flex sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div>
             <h2 class="text-base font-bold text-slate-900">{{ auth()->user()->isStaff() ? 'My Activity History' : 'Immutable System Audit Trail' }}</h2>
             <p class="text-xs text-slate-500">{{ auth()->user()->isStaff() ? 'Your product edits, order updates, and recorded actions' : 'Every product edit, order status update, and cash movement is logged permanently' }}</p>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full sm:w-auto">
+        <div class="mt-4 grid w-full grid-cols-1 gap-3 sm:mt-0 sm:w-[34rem] sm:grid-cols-2">
             <input 
                 type="text" 
                 wire:model.live.debounce.300ms="search" 
@@ -26,10 +26,42 @@
         </div>
     </div>
 
-    <!-- Logs Table Card -->
+    <!-- Mobile activity feed -->
     <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
+        <div class="divide-y divide-slate-100 md:hidden">
+            @forelse($logs as $log)
+                <article class="space-y-3 p-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="truncate text-sm font-bold text-slate-900">{{ $log->user->name ?? 'System Automated' }}</p>
+                            @unless(auth()->user()->isStaff())
+                                <p class="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{{ $log->user->role ?? 'System' }}</p>
+                            @endunless
+                        </div>
+                        <time class="shrink-0 text-right font-mono text-[10px] leading-relaxed text-slate-400" datetime="{{ $log->created_at->toIso8601String() }}">
+                            {{ $log->created_at->format('M d, Y') }}<br>
+                            {{ $log->created_at->format('g:i:s A') }}
+                        </time>
+                    </div>
+
+                    <span class="inline-flex max-w-full rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800">
+                        <span class="truncate">{{ $log->action }}</span>
+                    </span>
+
+                    <p class="break-words text-xs leading-relaxed text-slate-700">{{ $log->description }}</p>
+
+                    <p class="font-mono text-[10px] text-slate-400">IP · {{ $log->ip_address ?? '127.0.0.1' }}</p>
+                </article>
+            @empty
+                <div class="px-6 py-12 text-center text-sm text-slate-500">
+                    No activity logs recorded yet.
+                </div>
+            @endforelse
+        </div>
+
+        <!-- Larger screens retain the denser audit table. -->
+        <div class="hidden overflow-x-auto md:block">
+            <table class="min-w-[760px] w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                         <th class="px-6 py-3.5">Timestamp</th>

@@ -49,11 +49,15 @@
         .page-content { transition: opacity 140ms ease, transform 140ms ease; }
         .is-navigating .navigation-skeleton { opacity: 1; pointer-events: auto; }
         .is-navigating .page-content { opacity: 0; transform: translateY(4px); pointer-events: none; }
+        .navigation-loader { opacity: 0; transform: translateY(-8px); pointer-events: none; transition: opacity 140ms ease, transform 140ms ease; }
+        .is-navigating .navigation-loader { opacity: 1; transform: translateY(0); }
+        .navigation-loader__bar { transform-origin: left; animation: navigation-progress 1.35s cubic-bezier(.2, .7, .3, 1) infinite; }
+        @keyframes navigation-progress { 0% { transform: scaleX(.08); } 50% { transform: scaleX(.72); } 100% { transform: scaleX(.96); } }
         @keyframes app-modal-sheet-in { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
         @keyframes app-modal-dialog-in { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
         .app-modal-sheet { animation: app-modal-sheet-in 260ms cubic-bezier(.22, .8, .25, 1) both; }
         @media (min-width: 640px) { .app-modal-sheet { animation-name: app-modal-dialog-in; } }
-        @media (prefers-reduced-motion: reduce) { .animate-skeleton, .page-content, .navigation-skeleton, .app-modal-sheet { animation: none; transition: none; } }
+        @media (prefers-reduced-motion: reduce) { .animate-skeleton, .page-content, .navigation-skeleton, .navigation-loader, .navigation-loader__bar, .app-modal-sheet { animation: none; transition: none; } }
 
         /* Mobile bottom nav safe area */
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
@@ -78,12 +82,35 @@
      DESKTOP: Light bg + fixed sidebar      (>= lg)
      ═══════════════════════════════════════════════════════════ --}}
 <body class="h-full overflow-x-hidden bg-[#F2F2F2] lg:bg-[#F2F2F2]"
-      x-data="{ drawerOpen: false, notificationsOpen: false }"
+      x-data="{
+          drawerOpen: false,
+          notificationsOpen: false,
+          announcementModal: null,
+          openAnnouncement(notification) {
+              this.announcementModal = notification;
+              if (!notification.is_read) {
+                  fetch(`/notifications/${notification.id}/read`, {
+                      method: 'POST',
+                      headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' },
+                  });
+              }
+          }
+      }"
       @keydown.escape.window="notificationsOpen = false">
+
+<div class="navigation-loader fixed inset-x-0 top-0 z-[100]" role="status" aria-live="polite" aria-atomic="true">
+    <div class="h-1 overflow-hidden bg-amber-100/90 shadow-sm">
+        <div class="navigation-loader__bar h-full w-full bg-amber-500"></div>
+    </div>
+    <div class="mx-auto flex w-max items-center gap-2 rounded-b-xl bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white shadow-lg">
+        <svg class="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3"/><path class="opacity-90" fill="currentColor" d="M12 3a9 9 0 0 1 9 9h-3a6 6 0 0 0-6-6V3z"/></svg>
+        <span data-navigation-message>Loading workspace…</span>
+    </div>
+</div>
 
 @php
     $_notifications = auth()->check()
-        ? \App\Models\Notification::where('user_id', auth()->id())->latest()->take(10)->get()
+        ? \App\Models\Notification::with('announcement')->where('user_id', auth()->id())->latest()->take(10)->get()
         : collect();
     $_unreadNotificationCount = $_notifications->where('is_read', false)->count();
 @endphp
@@ -204,6 +231,15 @@
             Activity Logs
         </a>
 
+        @if(auth()->check() && (auth()->user()->isOwner() || auth()->user()->isManager()))
+        <a href="{{ route('announcements.index') }}" wire:navigate @click="drawerOpen=false"
+           class="flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] font-semibold transition-all
+                  {{ request()->routeIs('announcements.*') ? 'bg-white text-[#111111]' : 'text-white/60 hover:bg-white/10 hover:text-white' }}">
+            <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path d="M18 8a6 6 0 00-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
+            Announcements
+        </a>
+        @endif
+
         @if(auth()->check() && auth()->user()->isOwner())
         <a href="{{ route('users.index') }}" wire:navigate @click="drawerOpen=false"
            class="flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] font-semibold transition-all
@@ -267,7 +303,7 @@
             <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
         </svg>
         @if($_unreadNotificationCount > 0)
-            <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-[1.5px] border-[#1A1A1E]"></span>
+            <span class="absolute -right-1 -top-1 min-w-4 rounded-full bg-red-500 px-1 py-0.5 text-center text-[9px] font-black leading-none text-white ring-2 ring-[#1A1A1E] animate-pulse">{{ min($_unreadNotificationCount, 99) }}</span>
         @endif
     </button>
 </header>
@@ -282,8 +318,12 @@
         </div>
         <div class="max-h-[60vh] overflow-y-auto p-3">
             @forelse($_notifications as $notification)
-                @if($notification->link)
-                    <a href="{{ $notification->link }}" wire:navigate @click="notificationsOpen = false" class="mb-2 block rounded-2xl p-4 transition-colors {{ $notification->is_read ? 'bg-white' : 'bg-[#F5F7FA]' }}">
+                @if(str_starts_with($notification->type, 'announcement.'))
+                    <button type="button" @click="openAnnouncement(@js(['id' => $notification->id, 'title' => $notification->title, 'message' => $notification->message, 'image_url' => $notification->announcement?->image_path ? asset('storage/'.$notification->announcement->image_path) : null, 'created_at' => $notification->created_at->diffForHumans(), 'is_read' => $notification->is_read])); notificationsOpen = false" class="mb-2 block w-full rounded-2xl border-l-4 border-amber-400 p-4 text-left transition-colors {{ $notification->is_read ? 'bg-white' : 'bg-amber-50' }}">
+                        <div class="flex gap-3"><span class="mt-1 h-2 w-2 flex-shrink-0 rounded-full {{ $notification->is_read ? 'bg-[#D0D0D0]' : 'bg-amber-500' }}"></span><div class="min-w-0 flex-1"><p class="text-[13px] font-bold text-[#222222]">{{ $notification->title }}</p><p class="mt-1 text-[12px] leading-relaxed text-[#666666] line-clamp-2">{{ $notification->message }}</p><p class="mt-2 text-[11px] text-[#999999]">{{ $notification->created_at->diffForHumans() }}</p></div>@if($notification->announcement?->image_path)<img src="{{ asset('storage/'.$notification->announcement->image_path) }}" alt="" class="h-14 w-14 rounded-xl object-cover">@endif</div>
+                    </button>
+                @elseif($notification->link)
+                    <a href="{{ route('notifications.open', $notification) }}" @click="notificationsOpen = false" class="mb-2 block rounded-2xl border-l-4 p-4 transition-colors {{ str_starts_with($notification->type, 'announcement.') ? 'border-amber-400' : 'border-blue-500' }} {{ $notification->is_read ? 'bg-white' : 'bg-[#F5F7FA]' }}">
                         <div class="flex gap-3"><span class="mt-1 h-2 w-2 flex-shrink-0 rounded-full {{ $notification->is_read ? 'bg-[#D0D0D0]' : 'bg-blue-500' }}"></span><div><p class="text-[13px] font-bold text-[#222222]">{{ $notification->title }}</p><p class="mt-1 text-[12px] leading-relaxed text-[#666666]">{{ $notification->message }}</p><p class="mt-2 text-[11px] text-[#999999]">{{ $notification->created_at->diffForHumans() }}</p></div></div>
                     </a>
                 @else
@@ -294,6 +334,18 @@
             @endforelse
         </div>
     </section>
+</div>
+
+{{-- Full announcement reader --}}
+<div x-show="announcementModal" x-cloak class="fixed inset-0 z-[80] flex items-end bg-black/50 p-0 sm:items-center sm:justify-center sm:p-5" role="dialog" aria-modal="true" aria-label="Announcement" @keydown.escape.window="announcementModal = null">
+    <div class="absolute inset-0" @click="announcementModal = null"></div>
+    <article class="app-modal-sheet relative w-full max-w-xl rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl sm:p-7">
+        <div class="flex items-start justify-between gap-4 border-b border-amber-100 pb-4"><div class="min-w-0"><p class="text-[10px] font-black uppercase tracking-[0.16em] text-amber-600">Team announcement</p><h2 class="mt-1 text-[19px] font-black leading-snug text-slate-900" x-text="announcementModal?.title"></h2></div><button type="button" @click="announcementModal = null" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100" aria-label="Close announcement">✕</button></div>
+        <template x-if="announcementModal?.image_url"><img :src="announcementModal.image_url" :alt="announcementModal.title" class="mt-5 max-h-[55vh] w-full rounded-2xl object-contain bg-slate-100"></template>
+        <p class="mt-5 whitespace-pre-wrap text-[14px] leading-7 text-slate-700" x-text="announcementModal?.message"></p>
+        <p class="mt-6 text-[11px] font-semibold text-slate-400" x-text="announcementModal?.created_at"></p>
+        <button type="button" @click="announcementModal = null" class="mt-5 min-h-[44px] w-full rounded-xl bg-[#111111] text-[13px] font-black text-white hover:bg-slate-800">Got it</button>
+    </article>
 </div>
 
 {{-- Mobile Bottom Navigation --}}
@@ -447,6 +499,15 @@
                 Activity Logs
             </a>
 
+            @if(auth()->check() && (auth()->user()->isOwner() || auth()->user()->isManager()))
+            <a href="{{ route('announcements.index') }}" wire:navigate
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all
+                      {{ request()->routeIs('announcements.*') ? 'bg-[#111111] text-white' : 'text-[#555555] hover:bg-[#F5F5F5] hover:text-[#111111]' }}">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path d="M18 8a6 6 0 00-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
+                Announcements
+            </a>
+            @endif
+
             @if(auth()->check() && auth()->user()->isOwner())
             <a href="{{ route('users.index') }}" wire:navigate
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all
@@ -526,6 +587,34 @@
             </a>
             @endif
 
+            {{-- Notification center (desktop) --}}
+            <div class="relative" @click.outside="notificationsOpen = false">
+                <button type="button" @click="notificationsOpen = !notificationsOpen" :aria-expanded="notificationsOpen.toString()" class="relative flex h-9 w-9 items-center justify-center rounded-xl text-[#555555] hover:bg-[#F5F5F5] hover:text-[#111111]" aria-label="Open notifications">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                    @if($_unreadNotificationCount > 0)<span class="absolute -right-1 -top-1 min-w-4 rounded-full bg-red-500 px-1 py-0.5 text-center text-[9px] font-black leading-none text-white ring-2 ring-white animate-pulse">{{ min($_unreadNotificationCount, 99) }}</span>@endif
+                </button>
+                <div x-show="notificationsOpen" x-cloak x-transition class="absolute right-0 top-11 z-50 w-[360px] overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white shadow-2xl">
+                    <div class="border-b border-[#E8E8E8] px-4 py-3"><p class="text-[13px] font-bold text-[#111111]">Notifications</p><p class="text-[11px] text-[#777777]">{{ $_unreadNotificationCount ? $_unreadNotificationCount . ' unread' : 'You’re all caught up' }}</p></div>
+                    <div class="max-h-[420px] overflow-y-auto p-2">
+                        @forelse($_notifications as $notification)
+                            @if(str_starts_with($notification->type, 'announcement.'))
+                                <button type="button" @click="openAnnouncement(@js(['id' => $notification->id, 'title' => $notification->title, 'message' => $notification->message, 'image_url' => $notification->announcement?->image_path ? asset('storage/'.$notification->announcement->image_path) : null, 'created_at' => $notification->created_at->diffForHumans(), 'is_read' => $notification->is_read])); notificationsOpen = false" class="mb-1 block w-full rounded-xl border-l-4 border-amber-400 bg-left p-3 text-left hover:bg-amber-50 {{ $notification->is_read ? 'bg-white' : 'bg-amber-50' }}">
+                                    <div class="flex gap-3"><div class="min-w-0 flex-1"><p class="text-[12px] font-bold text-[#222222]">{{ $notification->title }}</p><p class="mt-1 line-clamp-2 text-[11px] leading-relaxed text-[#666666]">{{ $notification->message }}</p><p class="mt-1.5 text-[10px] text-[#999999]">{{ $notification->created_at->diffForHumans() }}</p></div>@if($notification->announcement?->image_path)<img src="{{ asset('storage/'.$notification->announcement->image_path) }}" alt="" class="h-14 w-14 rounded-xl object-cover">@endif</div>
+                                </button>
+                            @elseif($notification->link)
+                                <a href="{{ route('notifications.open', $notification) }}" class="mb-1 block rounded-xl border-l-4 p-3 hover:bg-[#F5F7FA] {{ str_starts_with($notification->type, 'announcement.') ? 'border-amber-400' : 'border-blue-500' }} {{ $notification->is_read ? 'bg-white' : 'bg-blue-50/60' }}">
+                                    <p class="text-[12px] font-bold text-[#222222]">{{ $notification->title }}</p><p class="mt-1 text-[11px] leading-relaxed text-[#666666]">{{ $notification->message }}</p><p class="mt-1.5 text-[10px] text-[#999999]">{{ $notification->created_at->diffForHumans() }}</p>
+                                </a>
+                            @else
+                                <div class="mb-1 rounded-xl p-3 {{ $notification->is_read ? 'bg-white' : 'bg-blue-50/60' }}"><p class="text-[12px] font-bold text-[#222222]">{{ $notification->title }}</p><p class="mt-1 text-[11px] leading-relaxed text-[#666666]">{{ $notification->message }}</p></div>
+                            @endif
+                        @empty
+                            <p class="px-4 py-10 text-center text-[12px] text-[#777777]">No notifications yet.</p>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+
             {{-- User pill --}}
             <div class="flex items-center gap-2 pl-3 border-l border-[#F0F0F0]">
                 <div class="w-7 h-7 rounded-full bg-[#111111] flex items-center justify-center">
@@ -572,15 +661,34 @@
 <script src="/offline-sync.js"></script>
 <script>
     window.AlasOffline?.setUser({{ auth()->id() ?? 'null' }});
+    let navigationDelayTimer;
+
+    const setNavigationState = (isNavigating) => {
+        const message = document.querySelector('[data-navigation-message]');
+
+        document.documentElement.classList.toggle('is-navigating', isNavigating);
+        document.querySelectorAll('[data-page-content]').forEach((content) => content.setAttribute('aria-busy', isNavigating ? 'true' : 'false'));
+
+        window.clearTimeout(navigationDelayTimer);
+
+        if (isNavigating) {
+            if (message) message.textContent = 'Loading workspace…';
+            navigationDelayTimer = window.setTimeout(() => {
+                if (message && document.documentElement.classList.contains('is-navigating')) {
+                    message.textContent = 'Still loading — checking your connection…';
+                }
+            }, 5000);
+        }
+    };
+
     document.addEventListener('livewire:navigating', () => {
-        document.documentElement.classList.add('is-navigating');
-        document.querySelectorAll('[data-page-content]').forEach((content) => content.setAttribute('aria-busy', 'true'));
+        setNavigationState(true);
         window.scrollTo({ top: 0, behavior: 'auto' });
     });
     document.addEventListener('livewire:navigated', () => {
-        document.documentElement.classList.remove('is-navigating');
-        document.querySelectorAll('[data-page-content]').forEach((content) => content.setAttribute('aria-busy', 'false'));
+        setNavigationState(false);
     });
+    window.addEventListener('pageshow', () => setNavigationState(false));
 </script>
 </body>
 </html>

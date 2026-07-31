@@ -37,6 +37,11 @@
     <div>
         <div class="text-[11px] font-bold text-[#AAAAAA] uppercase tracking-wider mb-3">Quick Actions</div>
         <div class="flex flex-wrap gap-3">
+            <a href="{{ route('promotion-activities.index') }}" wire:navigate
+               class="inline-flex items-center gap-2 px-5 py-3 bg-white border border-[#E0E0E0] text-[#333333] rounded-xl font-semibold text-[13px] hover:bg-[#F5F5F5] transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4Z"/></svg>
+                Submit Activity
+            </a>
             <a href="{{ route('orders.create') }}" wire:navigate
                class="inline-flex items-center gap-2 px-5 py-3 bg-[#111111] text-white rounded-xl font-semibold text-[13px] hover:bg-[#333333] transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>

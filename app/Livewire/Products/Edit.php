@@ -70,7 +70,7 @@ class Edit extends Component
         ]);
 
         session()->flash('success', "Product {$this->product->product_name} updated successfully!");
-        $this->redirect(route('products.index'));
+        $this->redirect(route('products.index'), navigate: true);
     }
 
     public function render()
