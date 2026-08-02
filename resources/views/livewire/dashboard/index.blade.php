@@ -1,47 +1,5 @@
 <div class="space-y-6">
 
-    @if($dashboardBanners->isNotEmpty())
-        <section
-            x-data="{
-                active: 0,
-                total: {{ $dashboardBanners->count() }},
-                timer: null,
-                next() { this.active = (this.active + 1) % this.total },
-                previous() { this.active = (this.active - 1 + this.total) % this.total },
-                init() { if (this.total > 1) this.timer = setInterval(() => this.next(), 6000) },
-                destroy() { clearInterval(this.timer) }
-            }"
-            class="overflow-hidden rounded-2xl border border-[#E3E3E3] bg-[#111111] shadow-sm"
-            aria-label="Team design announcements"
-        >
-            <div class="relative aspect-[16/7] min-h-[160px] sm:aspect-[21/7]">
-                @foreach($dashboardBanners as $index => $banner)
-                    <article x-show="active === {{ $index }}" x-transition.opacity.duration.500ms class="absolute inset-0" @if($index > 0) x-cloak @endif>
-                        <img src="{{ asset('storage/'.$banner->image_path) }}" alt="{{ $banner->title }}" class="h-full w-full object-cover" loading="{{ $index === 0 ? 'eager' : 'lazy' }}">
-                        <div class="absolute inset-0 bg-gradient-to-r from-black/65 via-black/20 to-transparent"></div>
-                        <div class="absolute inset-x-0 bottom-0 p-4 text-white sm:p-6">
-                            <p class="text-[10px] font-black uppercase tracking-[0.18em] text-amber-300">Team update</p>
-                            <h2 class="mt-1 max-w-xl text-[18px] font-black leading-tight sm:text-[24px]">{{ $banner->title }}</h2>
-                            @if($banner->message)
-                                <p class="mt-1 max-w-2xl text-[12px] leading-relaxed text-white/80 sm:text-[13px]">{{ \Illuminate\Support\Str::limit($banner->message, 150) }}</p>
-                            @endif
-                        </div>
-                    </article>
-                @endforeach
-
-                @if($dashboardBanners->count() > 1)
-                    <button type="button" @click="previous()" class="absolute left-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur transition hover:bg-black/60" aria-label="Previous banner">‹</button>
-                    <button type="button" @click="next()" class="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur transition hover:bg-black/60" aria-label="Next banner">›</button>
-                    <div class="absolute bottom-3 right-4 flex gap-1.5 sm:bottom-4 sm:right-6">
-                        @foreach($dashboardBanners as $index => $banner)
-                            <button type="button" @click="active = {{ $index }}" :class="active === {{ $index }} ? 'w-5 bg-white' : 'w-1.5 bg-white/55'" class="h-1.5 rounded-full transition-all" aria-label="Show banner {{ $index + 1 }}"></button>
-                        @endforeach
-                    </div>
-                @endif
-            </div>
-        </section>
-    @endif
-
     {{-- ===================================================================
          STAFF DASHBOARD
          =================================================================== --}}
@@ -56,6 +14,8 @@
         <h2 class="text-[22px] font-bold text-[#111111]">My Orders Overview</h2>
         <p class="text-[13px] text-[#888888] mt-0.5">Build your monthly sales progress and incentives.</p>
     </div>
+
+    @include('livewire.dashboard._partials.gallery-carousel')
 
     {{-- Incentive motivation --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -158,6 +118,8 @@
         </a>
     </div>
 
+    @include('livewire.dashboard._partials.gallery-carousel')
+
     {{-- Manager KPIs --}}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="bg-white rounded-xl border border-[#E8E8E8] p-5">
@@ -246,6 +208,8 @@
             </button>
         </div>
     </div>
+
+    @include('livewire.dashboard._partials.gallery-carousel')
 
     {{-- Owner KPI Row 1 --}}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
