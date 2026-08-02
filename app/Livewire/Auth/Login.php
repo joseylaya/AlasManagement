@@ -4,16 +4,17 @@ namespace App\Livewire\Auth;
 
 use App\Services\ActivityLogService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Livewire\Component;
 
 class Login extends Component
 {
-    public string $email = '';
+    public string $username = '';
     public string $password = '';
     public bool $remember = false;
 
     protected array $rules = [
-        'email' => 'required|email',
+        'username' => 'required|string',
         'password' => 'required',
     ];
 
@@ -21,7 +22,7 @@ class Login extends Component
     {
         $this->validate();
 
-        if (Auth::attempt(['email' => $this->email, 'password' => $this->password], $this->remember)) {
+        if (Auth::attempt(['username' => Str::lower(trim($this->username)), 'password' => $this->password, 'status' => 'active'], $this->remember)) {
             session()->regenerate();
             
             ActivityLogService::log(
@@ -38,19 +39,19 @@ class Login extends Component
             return;
         }
 
-        $this->addError('email', 'The provided credentials do not match our records or account is inactive.');
+        $this->addError('username', 'The provided credentials do not match our records or account is inactive.');
     }
 
     public function demoLogin(string $role): void
     {
-        $email = match ($role) {
-            'owner' => 'owner@alas.com',
-            'manager' => 'manager@alas.com',
-            'staff' => 'staff@alas.com',
-            default => 'owner@alas.com',
+        $username = match ($role) {
+            'owner' => 'owner',
+            'manager' => 'manager',
+            'staff' => 'staff',
+            default => 'owner',
         };
 
-        $this->email = $email;
+        $this->username = $username;
         $this->password = 'password';
 
         $this->login();

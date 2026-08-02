@@ -26,12 +26,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } }
-        }
-    </script>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
     <style>
         body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
@@ -85,6 +80,11 @@
       x-data="{
           drawerOpen: false,
           notificationsOpen: false,
+          pushConfigured: @js((bool) config('services.web_push.public_key')),
+          pushPermission: typeof Notification === 'undefined' ? 'unsupported' : Notification.permission,
+          pushBusy: false,
+          pushMessage: '',
+          accountMenuOpen: false,
           announcementModal: null,
           openAnnouncement(notification) {
               this.announcementModal = notification;
@@ -94,9 +94,21 @@
                       headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' },
                   });
               }
+          },
+          async enablePush() {
+              this.pushBusy = true; this.pushMessage = '';
+              try { await window.AlasPush.subscribe(); this.pushPermission = Notification.permission; this.pushMessage = 'Device notifications are on.'; }
+              catch (error) { this.pushMessage = error.message || 'Unable to enable device notifications.'; }
+              finally { this.pushBusy = false; }
+          },
+          async disablePush() {
+              this.pushBusy = true; this.pushMessage = '';
+              try { await window.AlasPush.unsubscribe(); this.pushPermission = 'default'; this.pushMessage = 'Device notifications are off.'; }
+              catch (error) { this.pushMessage = error.message || 'Unable to disable device notifications.'; }
+              finally { this.pushBusy = false; }
           }
       }"
-      @keydown.escape.window="notificationsOpen = false">
+      @keydown.escape.window="notificationsOpen = false; accountMenuOpen = false">
 
 <div class="navigation-loader fixed inset-x-0 top-0 z-[100]" role="status" aria-live="polite" aria-atomic="true">
     <div class="h-1 overflow-hidden bg-amber-100/90 shadow-sm">
@@ -273,6 +285,9 @@
             <div class="flex-1 min-w-0">
                 <div class="text-[13px] font-bold text-white truncate">{{ auth()->user()->name ?? 'Guest' }}</div>
             </div>
+            <a href="{{ route('account.index') }}" wire:navigate @click="drawerOpen=false" class="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/70 hover:bg-white/20" aria-label="My account">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
+            </a>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button type="submit" class="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white/40 hover:bg-red-500/20 hover:text-red-400 transition-all">
@@ -317,6 +332,8 @@
             <button type="button" @click="notificationsOpen = false" class="min-h-[44px] min-w-[44px] rounded-xl text-[#555555]" aria-label="Close notifications">✕</button>
         </div>
         <div class="max-h-[60vh] overflow-y-auto p-3">
+            <div class="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div class="flex items-center justify-between gap-3"><div><p class="text-xs font-bold text-slate-800">Device notifications</p><p class="mt-0.5 text-[11px] text-slate-500">Get alerts from this notification inbox.</p></div><button type="button" x-show="pushPermission !== 'granted'" @click="enablePush" :disabled="pushBusy || !pushConfigured" class="min-h-[36px] rounded-lg bg-slate-900 px-3 text-[11px] font-bold text-white disabled:opacity-50"><span x-text="pushBusy ? 'Enabling…' : 'Enable'"></span></button><button type="button" x-show="pushPermission === 'granted'" @click="disablePush" :disabled="pushBusy" class="min-h-[36px] rounded-lg border border-slate-200 px-3 text-[11px] font-bold text-slate-700"><span x-text="pushBusy ? 'Updating…' : 'On'"></span></button></div><p x-show="pushMessage" x-text="pushMessage" class="mt-2 text-[11px] font-semibold text-slate-600"></p><p x-show="!pushConfigured" class="mt-2 text-[11px] text-amber-700">Push notifications are not configured on this server yet.</p></div>
             @forelse($_notifications as $notification)
                 @if(str_starts_with($notification->type, 'announcement.'))
                     <button type="button" @click="openAnnouncement(@js(['id' => $notification->id, 'title' => $notification->title, 'message' => $notification->message, 'image_url' => $notification->announcement?->image_path ? asset('storage/'.$notification->announcement->image_path) : null, 'created_at' => $notification->created_at->diffForHumans(), 'is_read' => $notification->is_read])); notificationsOpen = false" class="mb-2 block w-full rounded-2xl border-l-4 border-amber-400 p-4 text-left transition-colors {{ $notification->is_read ? 'bg-white' : 'bg-amber-50' }}">
@@ -595,6 +612,9 @@
                 </button>
                 <div x-show="notificationsOpen" x-cloak x-transition class="absolute right-0 top-11 z-50 w-[360px] overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white shadow-2xl">
                     <div class="border-b border-[#E8E8E8] px-4 py-3"><p class="text-[13px] font-bold text-[#111111]">Notifications</p><p class="text-[11px] text-[#777777]">{{ $_unreadNotificationCount ? $_unreadNotificationCount . ' unread' : 'You’re all caught up' }}</p></div>
+                    <div class="border-b border-[#E8E8E8] px-3 py-2">
+                        <div class="flex items-center justify-between gap-2"><p class="text-[11px] font-semibold text-slate-600">Device notifications</p><button type="button" x-show="pushPermission !== 'granted'" @click="enablePush" :disabled="pushBusy || !pushConfigured" class="rounded-lg bg-slate-900 px-2.5 py-1.5 text-[10px] font-bold text-white disabled:opacity-50" x-text="pushBusy ? 'Enabling…' : 'Enable push'"></button><button type="button" x-show="pushPermission === 'granted'" @click="disablePush" :disabled="pushBusy" class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-[10px] font-bold text-slate-700">Push on</button></div><p x-show="pushMessage" x-text="pushMessage" class="mt-1 text-[10px] font-semibold text-slate-600"></p><p x-show="!pushConfigured" class="mt-1 text-[10px] text-amber-700">Not configured on this server yet.</p>
+                    </div>
                     <div class="max-h-[420px] overflow-y-auto p-2">
                         @forelse($_notifications as $notification)
                             @if(str_starts_with($notification->type, 'announcement.'))
@@ -616,11 +636,18 @@
             </div>
 
             {{-- User pill --}}
-            <div class="flex items-center gap-2 pl-3 border-l border-[#F0F0F0]">
+            <div class="relative border-l border-[#F0F0F0] pl-3" @click.outside="accountMenuOpen = false">
+                <button type="button" @click="accountMenuOpen = !accountMenuOpen" :aria-expanded="accountMenuOpen.toString()" class="flex items-center gap-2 rounded-xl px-1.5 py-1 hover:bg-[#F5F5F5]">
                 <div class="w-7 h-7 rounded-full bg-[#111111] flex items-center justify-center">
                     <span class="text-[10px] font-black text-white">{{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}</span>
                 </div>
                 <span class="text-[12px] font-semibold text-[#444444]">{{ auth()->user()->name ?? 'Guest' }}</span>
+                </button>
+                <div x-show="accountMenuOpen" x-cloak x-transition class="absolute right-0 top-11 z-50 w-52 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+                    <p class="px-2 py-1 text-[11px] font-semibold text-slate-500">@{{ auth()->user()->username }}</p>
+                    <a href="{{ route('account.index') }}" wire:navigate @click="accountMenuOpen = false" class="flex min-h-[40px] items-center rounded-lg px-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">My account</a>
+                    <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit" class="flex min-h-[40px] w-full items-center rounded-lg px-2 text-sm font-semibold text-rose-600 hover:bg-rose-50">Sign out</button></form>
+                </div>
             </div>
         </header>
 
@@ -659,8 +686,10 @@
 
 @livewireScripts
 <script src="/offline-sync.js"></script>
+<script src="/push.js"></script>
 <script>
     window.AlasOffline?.setUser({{ auth()->id() ?? 'null' }});
+    window.AlasPush?.configure(@json(config('services.web_push.public_key')));
     let navigationDelayTimer;
 
     const setNavigationState = (isNavigating) => {

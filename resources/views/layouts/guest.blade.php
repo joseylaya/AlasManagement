@@ -17,8 +17,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } }</script>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -59,5 +58,10 @@
         </aside>
     </div>
     @livewireScripts
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+        }
+    </script>
 </body>
 </html>

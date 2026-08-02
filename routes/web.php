@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\ActivityLogs\Index as ActivityLogsIndex;
+use App\Livewire\Account\Index as AccountIndex;
 use App\Livewire\Auth\Login;
 use App\Livewire\Dashboard\Index as DashboardIndex;
 use App\Livewire\Finance\Index as FinanceIndex;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\OfflineSyncController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PushSubscriptionController;
 
 // ─── Guest Routes ────────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
@@ -41,6 +43,8 @@ Route::middleware('auth')->group(function () {
         ->name('notifications.open');
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'read'])
         ->name('notifications.read');
+    Route::post('/push-subscriptions', [PushSubscriptionController::class, 'store'])->name('push-subscriptions.store');
+    Route::delete('/push-subscriptions', [PushSubscriptionController::class, 'destroy'])->name('push-subscriptions.destroy');
 
     Route::post('/sync/orders', [OfflineSyncController::class, 'order'])->name('sync.orders');
     Route::post('/sync/owner-withdrawals', [OfflineSyncController::class, 'ownerWithdrawal'])->name('sync.owner-withdrawals');
@@ -48,6 +52,7 @@ Route::middleware('auth')->group(function () {
     // Dashboard (all roles)
     Route::get('/', DashboardIndex::class)->name('dashboard');
     Route::get('/dashboard', DashboardIndex::class);
+    Route::get('/account', AccountIndex::class)->name('account.index');
 
     // ─── Products — All roles can VIEW; Manager/Owner can CREATE/EDIT
     Route::get('/products', ProductsIndex::class)->name('products.index');

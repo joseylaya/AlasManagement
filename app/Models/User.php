@@ -13,6 +13,7 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name',
+        'username',
         'email',
         'password',
         'role',
@@ -161,6 +162,11 @@ class User extends Authenticatable
     public function notifications()
     {
         return $this->hasMany(Notification::class);
+    }
+
+    public function pushSubscriptions()
+    {
+        return $this->hasMany(PushSubscription::class);
     }
 
     public function salaryProfiles() { return $this->hasMany(SalaryProfile::class); }

@@ -9,29 +9,42 @@
         <form wire:submit.prevent="login" class="space-y-5">
 
             <div>
-                <label for="email" class="mb-2 block text-[11px] font-bold uppercase tracking-wider text-[#5F5F5F]">Work email</label>
+                <label for="username" class="mb-2 block text-[11px] font-bold uppercase tracking-wider text-[#5F5F5F]">Username</label>
                 <input
-                    type="email"
-                    id="email"
-                    wire:model="email"
-                    autocomplete="email"
-                    inputmode="email"
-                    placeholder="name@company.com"
+                    type="text"
+                    id="username"
+                    wire:model="username"
+                    autocomplete="username"
+                    autocapitalize="none"
+                    spellcheck="false"
+                    placeholder="Enter your username"
                     class="min-h-[50px] w-full rounded-2xl border border-[#DDDDDD] bg-[#FCFCFC] px-4 text-[14px] text-[#111111] outline-none transition placeholder:text-[#A5A5A5] focus:border-[#111111] focus:bg-white focus:ring-4 focus:ring-black/5"
                 >
-                @error('email') <p class="mt-1.5 text-[11px] font-medium text-red-500">{{ $message }}</p> @enderror
+                @error('username') <p class="mt-1.5 text-[11px] font-medium text-red-500">{{ $message }}</p> @enderror
             </div>
 
-            <div>
+            <div x-data="{ showPassword: false }">
                 <label for="password" class="mb-2 block text-[11px] font-bold uppercase tracking-wider text-[#5F5F5F]">Password</label>
-                <input
-                    type="password"
-                    id="password"
-                    wire:model="password"
-                    autocomplete="current-password"
-                    placeholder="Enter your password"
-                    class="min-h-[50px] w-full rounded-2xl border border-[#DDDDDD] bg-[#FCFCFC] px-4 text-[14px] text-[#111111] outline-none transition placeholder:text-[#A5A5A5] focus:border-[#111111] focus:bg-white focus:ring-4 focus:ring-black/5"
-                >
+                <div class="relative">
+                    <input
+                        :type="showPassword ? 'text' : 'password'"
+                        id="password"
+                        wire:model="password"
+                        autocomplete="current-password"
+                        placeholder="Enter your password"
+                        class="min-h-[50px] w-full rounded-2xl border border-[#DDDDDD] bg-[#FCFCFC] px-4 pr-12 text-[14px] text-[#111111] outline-none transition placeholder:text-[#A5A5A5] focus:border-[#111111] focus:bg-white focus:ring-4 focus:ring-black/5"
+                    >
+                    <button
+                        type="button"
+                        @click="showPassword = !showPassword"
+                        :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                        :aria-pressed="showPassword.toString()"
+                        class="absolute inset-y-0 right-0 flex w-12 items-center justify-center rounded-r-2xl text-[#777777] transition hover:text-[#111111] focus:outline-none focus:ring-4 focus:ring-black/5"
+                    >
+                        <svg x-show="!showPassword" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.25 12s3.375-6.75 9.75-6.75S21.75 12 21.75 12 18.375 18.75 12 18.75 2.25 12 2.25 12Z"/><circle cx="12" cy="12" r="2.75" stroke-width="1.8"/></svg>
+                        <svg x-show="showPassword" x-cloak class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="m3 3 18 18M10.584 10.587A2.25 2.25 0 0 0 13.41 13.41M9.88 5.18A10.95 10.95 0 0 1 12 5.25c6.375 0 9.75 6.75 9.75 6.75a18.9 18.9 0 0 1-3.18 3.83M6.23 6.23C3.78 8.08 2.25 12 2.25 12s3.375 6.75 9.75 6.75a9.9 9.9 0 0 0 2.41-.29"/></svg>
+                    </button>
+                </div>
                 @error('password') <p class="mt-1.5 text-[11px] font-medium text-red-500">{{ $message }}</p> @enderror
             </div>
 

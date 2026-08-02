@@ -60,7 +60,7 @@
                             <span class="text-slate-400">No proof attached</span>
                         @endif
 
-                        @if($activity->approved_amount)
+                        @if($activity->approved_amount && (!$activity->compensationRecord || in_array($activity->compensationRecord->status, ['payable', 'paid'], true)))
                             <span class="rounded-lg bg-emerald-50 px-3 py-2 font-bold text-emerald-800">₱{{ number_format($activity->approved_amount, 2) }} incentive</span>
                         @endif
 

@@ -40,8 +40,11 @@ class Index extends Component
             $myRecentOrders   = Order::where('created_by', $user->id)->with('items')->latest('id')->take(5)->get();
             $pendingApprovalCount = Order::where('created_by', $user->id)->where('approval_status', 'pending_approval')->count();
             $periodStart = now()->startOfMonth();
-            $activityIncentives = (float) CompensationRecord::where('user_id', $user->id)->where('type', 'activity_incentive')->where('status', '!=', 'cancelled')->whereBetween('created_at', [$periodStart, now()])->sum('amount');
-            $quotaIncentives = (float) CompensationRecord::where('user_id', $user->id)->where('type', 'quota_incentive')->where('status', '!=', 'cancelled')->whereBetween('created_at', [$periodStart, now()])->sum('amount');
+            // An incentive is earned only after the Owner's finance approval,
+            // not while it is still awaiting that approval.
+            $earnedStatuses = ['payable', 'paid'];
+            $activityIncentives = (float) CompensationRecord::where('user_id', $user->id)->where('type', 'activity_incentive')->whereIn('status', $earnedStatuses)->whereBetween('created_at', [$periodStart, now()])->sum('amount');
+            $quotaIncentives = (float) CompensationRecord::where('user_id', $user->id)->where('type', 'quota_incentive')->whereIn('status', $earnedStatuses)->whereBetween('created_at', [$periodStart, now()])->sum('amount');
             $quotaTarget = (int) Setting::getByKey('staff_sales_quota_target', 15);
             $quotaReward = (float) Setting::getByKey('staff_sales_quota_reward', 500);
             $quotaProgress = Order::where('created_by', $user->id)->where('order_status', 'completed')->whereBetween('created_at', [$periodStart, now()])->count();

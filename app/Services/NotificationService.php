@@ -22,7 +22,7 @@ class NotificationService
     ): Notification {
         $userId = $user instanceof User ? $user->id : $user;
 
-        return Notification::create([
+        $notification = Notification::create([
             'user_id' => $userId,
             'announcement_id' => $announcementId,
             'type' => $type,
@@ -31,6 +31,10 @@ class NotificationService
             'link' => $link,
             'is_read' => false,
         ]);
+
+        PushNotificationService::send($notification);
+
+        return $notification;
     }
 
     public static function notifyLowStock(Product $product, int $currentStock, int $minThreshold): void

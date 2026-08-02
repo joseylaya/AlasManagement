@@ -13,12 +13,14 @@ class Index extends Component
 {
     public bool $showUserModal = false;
     public string $name = '';
+    public string $username = '';
     public string $email = '';
     public string $password = 'password';
     public string $role = 'staff';
 
     protected array $rules = [
         'name' => 'required|string|max:255',
+        'username' => 'required|alpha_dash|max:50|unique:users,username',
         'email' => 'required|email|unique:users,email',
         'password' => 'required|min:6',
         'role' => 'required|in:owner,manager,staff',
@@ -31,6 +33,7 @@ class Index extends Component
         try {
             $user = User::create([
                 'name' => $this->name,
+                'username' => strtolower($this->username),
                 'email' => $this->email,
                 'password' => Hash::make($this->password),
                 'role' => $this->role,
@@ -46,6 +49,7 @@ class Index extends Component
             session()->flash('success', "Account for {$user->name} created successfully!");
             $this->showUserModal = false;
             $this->name = '';
+            $this->username = '';
             $this->email = '';
         } catch (Exception $e) {
             session()->flash('error', $e->getMessage());

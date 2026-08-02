@@ -27,6 +27,7 @@
                         </div>
                         <div class="min-w-0 flex-1">
                             <p class="truncate text-sm font-bold text-slate-900">{{ $u->name }}</p>
+                            <p class="mt-0.5 text-xs font-semibold text-slate-600">@{{ $u->username }}</p>
                             <p class="mt-0.5 break-all text-xs text-slate-500">{{ $u->email }}</p>
                         </div>
                         <span class="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold {{ $u->status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800' }}">
@@ -60,6 +61,7 @@
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                         <th class="px-6 py-3.5">Employee Name</th>
+                        <th class="px-6 py-3.5">Username</th>
                         <th class="px-6 py-3.5">Email Address</th>
                         <th class="px-6 py-3.5">Role</th>
                         <th class="px-6 py-3.5">Status</th>
@@ -74,6 +76,9 @@
                                     {{ strtoupper(substr($u->name, 0, 1)) }}
                                 </div>
                                 <span>{{ $u->name }}</span>
+                            </td>
+                            <td class="px-6 py-4 font-medium text-slate-700">
+                                @{{ $u->username }}
                             </td>
                             <td class="px-6 py-4 font-medium text-slate-700">
                                 {{ $u->email }}
@@ -119,6 +124,12 @@
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Full Name *</label>
                         <input type="text" wire:model="name" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500" placeholder="John Doe">
                         @error('name') <span class="text-xs text-rose-500 font-semibold mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Username *</label>
+                        <input type="text" wire:model="username" autocomplete="off" autocapitalize="none" spellcheck="false" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500" placeholder="john">
+                        @error('username') <span class="text-xs text-rose-500 font-semibold mt-1 block">{{ $message }}</span> @enderror
                     </div>
 
                     <div>

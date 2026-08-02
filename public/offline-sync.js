@@ -35,7 +35,12 @@
     const remarks = window.prompt('Remarks (optional)') || '';
     await queue('owner_withdrawal', { amount, reason, payment_source, remarks, drawal_date: new Date().toISOString().slice(0, 10) });
   };
-  window.AlasOffline = { setUser: (id) => { userId = id; announce(); sync(); }, queue, queueWithdrawal, sync, records };
+  const cacheApplicationPages = () => navigator.serviceWorker?.ready.then((registration) => {
+    registration.active?.postMessage({ type: 'CACHE_APPLICATION_PAGES', urls: ['/', '/dashboard', '/products', '/inventory', '/orders', '/orders/create', '/finance', '/activity-logs', '/promotion-activities', '/account'] });
+    const assets = performance.getEntriesByType('resource').map((entry) => entry.name).filter((url) => new URL(url).origin === location.origin);
+    registration.active?.postMessage({ type: 'CACHE_STATIC_ASSETS', urls: assets });
+  });
+  window.AlasOffline = { setUser: (id) => { userId = id; announce(); sync(); cacheApplicationPages(); }, queue, queueWithdrawal, sync, records };
   window.addEventListener('alas-offline-saved', event => window.alert(`${event.detail.record_type === 'sale' ? 'Sale' : 'Owner withdrawal'} saved on this device. It will synchronize when you are online.`));
   window.addEventListener('online', sync); window.addEventListener('offline', announce); window.addEventListener('load', () => { if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js'); });
 })();
