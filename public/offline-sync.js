@@ -1,4 +1,18 @@
+/* Offline queueing is temporarily disabled while the live login flow is stabilized. */
 (() => {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations.forEach((registration) => registration.unregister());
+    });
+  }
+  if ('caches' in window) {
+    caches.keys().then((keys) => keys
+      .filter((key) => key.startsWith('alas-'))
+      .forEach((key) => caches.delete(key)));
+  }
+  window.AlasOffline = { setUser() {}, sync() {} };
+  return;
+
   const DB = 'alas-offline'; const STORE = 'sync_queue'; let userId = null;
   const open = () => new Promise((resolve, reject) => { const req = indexedDB.open(DB, 1); req.onupgradeneeded = () => req.result.createObjectStore(STORE, { keyPath: 'local_uuid' }); req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); });
   const records = async () => { const db = await open(); return new Promise((resolve, reject) => { const req = db.transaction(STORE).objectStore(STORE).getAll(); req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); }); };

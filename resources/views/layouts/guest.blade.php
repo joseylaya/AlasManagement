@@ -60,7 +60,10 @@
     @livewireScripts
     <script>
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js?v=5'));
+            navigator.serviceWorker.getRegistrations().then((registrations) => registrations.forEach((registration) => registration.unregister()));
+        }
+        if ('caches' in window) {
+            caches.keys().then((keys) => keys.filter((key) => key.startsWith('alas-')).forEach((key) => caches.delete(key)));
         }
     </script>
 </body>

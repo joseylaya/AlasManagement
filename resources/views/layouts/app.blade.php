@@ -126,12 +126,6 @@
         : collect();
     $_unreadNotificationCount = $_notifications->where('is_read', false)->count();
 @endphp
-<div x-data="{ online: navigator.onLine, pending: 0 }" @alas-sync-status.window="online = $event.detail.online; pending = $event.detail.pending" class="fixed inset-x-0 top-14 z-40 lg:top-0">
-    <div x-show="!online || pending" x-cloak class="mx-auto max-w-3xl rounded-b-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-center text-[12px] font-semibold text-amber-900">
-        <span x-text="!online ? 'You are offline. New sales and permitted cash transactions will be saved on this device.' : `${pending} transaction${pending === 1 ? '' : 's'} waiting to synchronize.`"></span>
-        <button type="button" x-show="online && pending" @click="window.AlasOffline.sync()" class="ml-2 underline">Sync now</button>
-    </div>
-</div>
 
 {{-- ══════════════════════════════════════════════════════
      MOBILE-ONLY: Drawer Overlay + Left Drawer + Top Bar + Bottom Nav
@@ -688,7 +682,6 @@
 <script src="/offline-sync.js"></script>
 <script src="/push.js"></script>
 <script>
-    window.AlasOffline?.setUser({{ auth()->id() ?? 'null' }});
     window.AlasPush?.configure(@json(config('services.web_push.public_key')));
     let navigationDelayTimer;
 
