@@ -41,5 +41,5 @@
   });
   window.AlasOffline = { setUser: (id) => { userId = id; announce(); sync(); cacheApplicationPages(); }, queue, queueWithdrawal, sync, records };
   window.addEventListener('alas-offline-saved', event => window.alert(`${event.detail.record_type === 'sale' ? 'Sale' : 'Owner withdrawal'} saved on this device. It will synchronize when you are online.`));
-  window.addEventListener('online', sync); window.addEventListener('offline', announce); window.addEventListener('load', () => { if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js'); });
+  window.addEventListener('online', sync); window.addEventListener('offline', announce); window.addEventListener('load', () => { if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js?v=5'); });
 })();

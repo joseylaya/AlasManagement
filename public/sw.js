@@ -1,4 +1,4 @@
-const VERSION = 'v4';
+const VERSION = 'v5';
 const SHELL_CACHE = `alas-shell-${VERSION}`;
 const SHELL = [
   '/login',
