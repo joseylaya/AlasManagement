@@ -3,7 +3,7 @@
 namespace App\Livewire\Dashboard;
 
 use App\Models\ActivityLog;
-use App\Models\Announcement;
+use App\Models\DashboardBanner;
 use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\CompensationRecord;
@@ -17,16 +17,10 @@ class Index extends Component
     {
         $user = auth()->user();
 
-        // Published designs are shared at the top of every role's dashboard.
-        // An announcement's audience still controls who can see its banner.
-        $dashboardBanners = Announcement::query()
-            ->where('status', 'sent')
-            ->whereNotNull('image_path')
-            ->where(function ($query) use ($user) {
-                $query->where('target_role', 'all')
-                    ->orWhere('target_role', $user->role);
-            })
-            ->latest('sent_at')
+        // The gallery is separate from announcements and visible to every role.
+        $dashboardBanners = DashboardBanner::query()
+            ->where('is_active', true)
+            ->orderBy('display_order')
             ->latest('id')
             ->take(8)
             ->get();

@@ -244,6 +244,12 @@
             <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path d="M18 8a6 6 0 00-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
             Announcements
         </a>
+        <a href="{{ route('dashboard-banners.index') }}" wire:navigate @click="drawerOpen=false"
+           class="flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] font-semibold transition-all
+                  {{ request()->routeIs('dashboard-banners.*') ? 'bg-white text-[#111111]' : 'text-white/60 hover:bg-white/10 hover:text-white' }}">
+            <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-5-5L5 20"/></svg>
+            Dashboard Gallery
+        </a>
         @endif
 
         @if(auth()->check() && auth()->user()->isOwner())
@@ -516,6 +522,12 @@
                       {{ request()->routeIs('announcements.*') ? 'bg-[#111111] text-white' : 'text-[#555555] hover:bg-[#F5F5F5] hover:text-[#111111]' }}">
                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path d="M18 8a6 6 0 00-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
                 Announcements
+            </a>
+            <a href="{{ route('dashboard-banners.index') }}" wire:navigate
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all
+                      {{ request()->routeIs('dashboard-banners.*') ? 'bg-[#111111] text-white' : 'text-[#555555] hover:bg-[#F5F5F5] hover:text-[#111111]' }}">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-5-5L5 20"/></svg>
+                Dashboard Gallery
             </a>
             @endif
 

@@ -4,6 +4,7 @@ use App\Livewire\ActivityLogs\Index as ActivityLogsIndex;
 use App\Livewire\Account\Index as AccountIndex;
 use App\Livewire\Auth\Login;
 use App\Livewire\Dashboard\Index as DashboardIndex;
+use App\Livewire\DashboardBanners\Index as DashboardBannersIndex;
 use App\Livewire\Finance\Index as FinanceIndex;
 use App\Livewire\Inventory\Index as InventoryIndex;
 use App\Livewire\Orders\Create as OrdersCreate;
@@ -86,6 +87,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/announcements', NotificationsManage::class)
         ->middleware('role:owner,manager')
         ->name('announcements.index');
+    Route::get('/dashboard-gallery', DashboardBannersIndex::class)
+        ->middleware('role:owner,manager')
+        ->name('dashboard-banners.index');
 
     // ─── Users Management — Owner only
     Route::get('/users', UsersIndex::class)
