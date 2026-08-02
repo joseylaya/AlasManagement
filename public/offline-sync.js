@@ -36,7 +36,6 @@
     await queue('owner_withdrawal', { amount, reason, payment_source, remarks, drawal_date: new Date().toISOString().slice(0, 10) });
   };
   const cacheApplicationPages = () => navigator.serviceWorker?.ready.then((registration) => {
-    registration.active?.postMessage({ type: 'CACHE_APPLICATION_PAGES', urls: ['/', '/dashboard', '/products', '/inventory', '/orders', '/orders/create', '/finance', '/activity-logs', '/promotion-activities', '/account'] });
     const assets = performance.getEntriesByType('resource').map((entry) => entry.name).filter((url) => new URL(url).origin === location.origin);
     registration.active?.postMessage({ type: 'CACHE_STATIC_ASSETS', urls: assets });
   });

@@ -1,6 +1,5 @@
-const VERSION = 'v3';
+const VERSION = 'v4';
 const SHELL_CACHE = `alas-shell-${VERSION}`;
-const PAGE_CACHE = `alas-pages-${VERSION}`;
 const SHELL = [
   '/login',
   '/offline.html',
@@ -25,18 +24,6 @@ async function cacheShell() {
   }));
 }
 
-async function cacheApplicationPages(urls) {
-  const cache = await caches.open(PAGE_CACHE);
-  await Promise.all(urls.map(async (url) => {
-    try {
-      const response = await fetch(url, { credentials: 'same-origin' });
-      if (isCacheable(response)) await cache.put(url, response);
-    } catch (_) {
-      // Pages that are not available to the current role are simply skipped.
-    }
-  }));
-}
-
 async function cacheStaticAssets(urls) {
   const cache = await caches.open(SHELL_CACHE);
   await Promise.all(urls.map(async (url) => {
@@ -56,15 +43,12 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((key) => key.startsWith('alas-') && ![SHELL_CACHE, PAGE_CACHE].includes(key)).map((key) => caches.delete(key)));
+    await Promise.all(keys.filter((key) => key.startsWith('alas-') && key !== SHELL_CACHE).map((key) => caches.delete(key)));
     await self.clients.claim();
   })());
 });
 
 self.addEventListener('message', (event) => {
-  if (event.data?.type === 'CACHE_APPLICATION_PAGES') {
-    event.waitUntil(cacheApplicationPages(event.data.urls || []));
-  }
   if (event.data?.type === 'CACHE_STATIC_ASSETS') {
     event.waitUntil(cacheStaticAssets(event.data.urls || []));
   }
@@ -79,11 +63,11 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate') {
     event.respondWith((async () => {
       try {
-        const response = await fetch(request);
-        if (isCacheable(response)) (await caches.open(PAGE_CACHE)).put(request, response.clone());
-        return response;
+        // Laravel/Livewire documents contain short-lived CSRF and component
+        // snapshots. Caching them causes "This page has expired" loops.
+        return await fetch(request);
       } catch (_) {
-        return (await caches.match(request)) || (await caches.match('/offline.html'));
+        return await caches.match('/offline.html');
       }
     })());
     return;
