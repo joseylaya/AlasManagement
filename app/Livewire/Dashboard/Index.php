@@ -3,6 +3,7 @@
 namespace App\Livewire\Dashboard;
 
 use App\Models\ActivityLog;
+use App\Models\Announcement;
 use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\CompensationRecord;
@@ -15,6 +16,20 @@ class Index extends Component
     public function render()
     {
         $user = auth()->user();
+
+        // Published designs are shared at the top of every role's dashboard.
+        // An announcement's audience still controls who can see its banner.
+        $dashboardBanners = Announcement::query()
+            ->where('status', 'sent')
+            ->whereNotNull('image_path')
+            ->where(function ($query) use ($user) {
+                $query->where('target_role', 'all')
+                    ->orWhere('target_role', $user->role);
+            })
+            ->latest('sent_at')
+            ->latest('id')
+            ->take(8)
+            ->get();
 
         // ─── Shared (all roles) ───────────────────────────────────
         $pendingOrdersCount   = Order::where('order_status', 'pending')->count();
@@ -96,6 +111,7 @@ class Index extends Component
             'isManager'           => $user->isManager(),
             'isStaff'             => $user->isStaff(),
             'canAccessFinance'    => $user->canAccessFinance(),
+            'dashboardBanners'    => $dashboardBanners,
             // Shared metrics
             'pendingOrdersCount'  => $pendingOrdersCount,
             'pendingApprovalCount'=> $pendingApprovalCount,
