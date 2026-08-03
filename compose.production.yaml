@@ -28,6 +28,8 @@ services:
       - "80:80"
     volumes:
       - ./public:/var/www/html/public:ro
+      # Nginx must also see Laravel's public disk; public/storage links here.
+      - ./storage/app/public:/var/www/html/storage/app/public:ro
       - ./docker/nginx/conf.d/production.conf:/etc/nginx/conf.d/default.conf:ro
       # Kept outside this repository: this existing file contains the DB admin
       # Basic Auth credentials used by the production reverse proxy.
