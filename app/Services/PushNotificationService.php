@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Notification;
 use App\Models\PushSubscription;
+use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
@@ -11,6 +12,21 @@ use Minishlink\WebPush\WebPush;
 class PushNotificationService
 {
     public static function send(Notification $notification): void
+    {
+        static::sendToUserIds($notification, [$notification->user_id]);
+    }
+
+    public static function sendToRoles(Notification $notification, array $roles): void
+    {
+        $userIds = User::where('status', 'active')
+            ->when(!in_array('all', $roles, true), fn ($query) => $query->whereIn('role', $roles))
+            ->pluck('id')
+            ->all();
+
+        static::sendToUserIds($notification, $userIds);
+    }
+
+    private static function sendToUserIds(Notification $notification, array $userIds): void
     {
         if (app()->environment('testing')) {
             return;
@@ -22,7 +38,7 @@ class PushNotificationService
             return;
         }
 
-        $subscriptions = PushSubscription::where('user_id', $notification->user_id)->get();
+        $subscriptions = PushSubscription::whereIn('user_id', array_filter($userIds))->get();
         if ($subscriptions->isEmpty()) {
             return;
         }

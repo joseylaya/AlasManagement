@@ -46,6 +46,9 @@ Route::middleware('auth')->group(function () {
         ->name('notifications.read');
     Route::post('/push-subscriptions', [PushSubscriptionController::class, 'store'])->name('push-subscriptions.store');
     Route::delete('/push-subscriptions', [PushSubscriptionController::class, 'destroy'])->name('push-subscriptions.destroy');
+    Route::get('/maintenance/database-backup', [\App\Http\Controllers\MaintenanceController::class, 'downloadDatabaseBackup'])
+        ->middleware('role:owner,manager')
+        ->name('maintenance.database-backup');
 
     Route::post('/sync/orders', [OfflineSyncController::class, 'order'])->name('sync.orders');
     Route::post('/sync/owner-withdrawals', [OfflineSyncController::class, 'ownerWithdrawal'])->name('sync.owner-withdrawals');

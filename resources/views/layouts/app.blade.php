@@ -122,7 +122,9 @@
 
 @php
     $_notifications = auth()->check()
-        ? \App\Models\Notification::with('announcement')->where('user_id', auth()->id())->latest()->take(10)->get()
+        ? \App\Models\Notification::visibleTo(auth()->user())
+            ->with(['announcement', 'reads' => fn ($query) => $query->where('user_id', auth()->id())])
+            ->latest()->take(10)->get()->each(fn ($notification) => $notification->applyReadStateFor(auth()->user()))
         : collect();
     $_unreadNotificationCount = $_notifications->where('is_read', false)->count();
 @endphp
@@ -607,6 +609,15 @@
                class="flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-100 rounded-lg text-[12px] font-semibold text-red-600 hover:bg-red-100 transition-colors">
                 <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
                 {{ $_lowStockCount }} Low Stock
+            </a>
+            @endif
+
+            @if(auth()->user()->isOwner() || auth()->user()->isManager())
+            <a href="{{ route('maintenance.database-backup') }}"
+               class="inline-flex min-h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-bold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+               title="Download a SQLite database backup">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2"/></svg>
+                Maintenance
             </a>
             @endif
 

@@ -10,18 +10,18 @@ class NotificationController extends Controller
 {
     public function open(Notification $notification): RedirectResponse
     {
-        abort_unless($notification->user_id === auth()->id(), 403);
+        $notification = Notification::visibleTo(auth()->user())->findOrFail($notification->id);
 
-        $notification->update(['is_read' => true]);
+        $notification->markReadBy(auth()->user());
 
         return redirect($notification->link ?: route('dashboard'));
     }
 
     public function read(Notification $notification): Response
     {
-        abort_unless($notification->user_id === auth()->id(), 403);
+        $notification = Notification::visibleTo(auth()->user())->findOrFail($notification->id);
 
-        $notification->update(['is_read' => true]);
+        $notification->markReadBy(auth()->user());
 
         return response()->noContent();
     }

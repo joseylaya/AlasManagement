@@ -31,12 +31,14 @@ class AnnouncementNotificationTest extends TestCase
         $this->assertFalse(NotificationService::publishAnnouncement($announcement));
 
         $this->assertDatabaseHas('notifications', [
-            'user_id' => $staff->id,
+            'user_id' => null,
             'announcement_id' => $announcement->id,
             'type' => 'announcement.general',
         ]);
-        $this->assertDatabaseMissing('notifications', ['user_id' => $inactiveStaff->id, 'announcement_id' => $announcement->id]);
-        $this->assertDatabaseMissing('notifications', ['user_id' => $manager->id, 'announcement_id' => $announcement->id]);
+        $this->assertSame(1, \App\Models\Notification::where('announcement_id', $announcement->id)->count());
+        $this->assertCount(1, \App\Models\Notification::visibleTo($staff)->get());
+        $this->assertCount(0, \App\Models\Notification::visibleTo($inactiveStaff)->get());
+        $this->assertCount(0, \App\Models\Notification::visibleTo($manager)->get());
         $this->assertSame(1, $announcement->fresh()->recipient_count);
         $this->assertSame('sent', $announcement->fresh()->status);
     }
@@ -56,7 +58,7 @@ class AnnouncementNotificationTest extends TestCase
         ]);
 
         $this->assertSame(1, NotificationService::dispatchScheduledAnnouncements());
-        $this->assertDatabaseHas('notifications', ['user_id' => $manager->id, 'announcement_id' => $announcement->id]);
+        $this->assertDatabaseHas('notifications', ['user_id' => null, 'announcement_id' => $announcement->id]);
         $this->assertSame(0, NotificationService::dispatchScheduledAnnouncements());
     }
 }

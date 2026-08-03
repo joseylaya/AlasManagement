@@ -37,37 +37,59 @@ class NotificationService
         return $notification;
     }
 
+    /** Create one shared notification, visible to all active users in the target roles. */
+    public static function sendBroadcast(
+        array $roles,
+        string $eventKey,
+        string $type,
+        string $title,
+        string $message,
+        ?string $link = null,
+        ?int $announcementId = null,
+    ): Notification {
+        $notification = Notification::firstOrCreate(
+            ['event_key' => $eventKey],
+            [
+                'user_id' => null,
+                'announcement_id' => $announcementId,
+                'target_roles' => array_values(array_unique($roles)),
+                'type' => $type,
+                'title' => $title,
+                'message' => $message,
+                'link' => $link,
+                'is_read' => false,
+            ],
+        );
+
+        if ($notification->wasRecentlyCreated) {
+            PushNotificationService::sendToRoles($notification, $roles);
+        }
+
+        return $notification;
+    }
+
     public static function notifyLowStock(Product $product, int $currentStock, int $minThreshold): void
     {
-        $ownersAndManagers = User::whereIn('role', ['owner', 'manager'])->get();
-
-        foreach ($ownersAndManagers as $user) {
-            static::send(
-                $user,
-                'inventory.low_stock',
-                'Low Stock Alert',
-                "Product {$product->product_name} ({$product->sku}) is low on stock! Current stock: {$currentStock} (Minimum: {$minThreshold}).",
-                '/inventory'
-            );
-        }
+        static::sendBroadcast(
+            ['owner', 'manager'],
+            "inventory-low-stock:{$product->id}:{$currentStock}",
+            'inventory.low_stock',
+            'Low Stock Alert',
+            "Product {$product->product_name} ({$product->sku}) is low on stock! Current stock: {$currentStock} (Minimum: {$minThreshold}).",
+            '/inventory',
+        );
     }
 
     public static function notifyPromotionActivitySubmitted(PromotionActivity $activity): void
     {
-        $reviewers = User::whereIn('role', ['owner', 'manager'])
-            ->where('status', 'active')
-            ->where('id', '!=', $activity->user_id)
-            ->get();
-
-        foreach ($reviewers as $reviewer) {
-            static::send(
-                $reviewer,
-                'incentive.activity_submitted',
-                'Incentive activity needs review',
-                "{$activity->user->name} submitted {$activity->activity_type} for {$activity->activity_date->format('M j, Y')}.",
-                route('promotion-activities.index', ['activity' => $activity->id])
-            );
-        }
+        static::sendBroadcast(
+            ['owner', 'manager'],
+            "incentive-activity-submitted:{$activity->id}",
+            'incentive.activity_submitted',
+            'Incentive activity needs review',
+            "{$activity->user->name} submitted {$activity->activity_type} for {$activity->activity_date->format('M j, Y')}.",
+            route('promotion-activities.index', ['activity' => $activity->id]),
+        );
     }
 
     public static function notifyPromotionActivityApproved(PromotionActivity $activity): void
@@ -94,15 +116,14 @@ class NotificationService
 
     public static function notifyCompensationAwaitingApproval(CompensationRecord $record): void
     {
-        foreach (User::where('role', 'owner')->where('status', 'active')->get() as $owner) {
-            static::send(
-                $owner,
-                'incentive.finance_approval_required',
-                'Incentive needs finance approval',
-                "{$record->user->name}'s {$record->record_number} for ₱".number_format((float) $record->amount, 2).' is ready for approval.',
-                route('finance.index', ['compensation_status' => 'pending_approval', 'compensation' => $record->id]).'#compensation-approvals'
-            );
-        }
+        static::sendBroadcast(
+            ['owner'],
+            "incentive-finance-approval:{$record->id}",
+            'incentive.finance_approval_required',
+            'Incentive needs finance approval',
+            "{$record->user->name}'s {$record->record_number} for ₱".number_format((float) $record->amount, 2).' is ready for approval.',
+            route('finance.index', ['compensation_status' => 'pending_approval', 'compensation' => $record->id]).'#compensation-approvals',
+        );
     }
 
     public static function notifyCompensationApproved(CompensationRecord $record): void
@@ -126,18 +147,16 @@ class NotificationService
                 return false;
             }
 
-            $recipients = User::where('status', 'active')
+            $recipientCount = User::where('status', 'active')
                 ->when($item->target_role !== 'all', fn ($query) => $query->where('role', $item->target_role))
-                ->get();
+                ->count();
 
-            foreach ($recipients as $recipient) {
-                static::send($recipient, 'announcement.general', $item->title, $item->message, route('dashboard'), $item->id);
-            }
+            static::sendBroadcast([$item->target_role], "announcement:{$item->id}", 'announcement.general', $item->title, $item->message, route('dashboard'), $item->id);
 
             $item->update([
                 'status' => 'sent',
                 'sent_at' => now(),
-                'recipient_count' => $recipients->count(),
+                'recipient_count' => $recipientCount,
             ]);
 
             return true;
