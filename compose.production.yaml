@@ -29,6 +29,9 @@ services:
     volumes:
       - ./public:/var/www/html/public:ro
       - ./docker/nginx/conf.d/production.conf:/etc/nginx/conf.d/default.conf:ro
+      # Kept outside this repository: this existing file contains the DB admin
+      # Basic Auth credentials used by the production reverse proxy.
+      - ../docker/nginx/conf.d/.dbadmin.htpasswd:/etc/nginx/secrets/dbadmin.htpasswd:ro
     networks:
       - app-network
 
