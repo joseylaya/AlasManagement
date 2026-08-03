@@ -15,7 +15,10 @@ if (file_exists($envFile)) {
         }
     }
 }
-if (!in_array($appEnv, ['local', 'development', 'dev', 'testing'])) {
+$dbAdminEnabled = file_exists($envFile)
+    && str_contains((string) file_get_contents($envFile), 'DBADMIN_ENABLED=true');
+
+if (!in_array($appEnv, ['local', 'development', 'dev', 'testing']) && ! $dbAdminEnabled) {
     http_response_code(403); die('<h1>403 Forbidden — DB Admin disabled in production.</h1>');
 }
 
