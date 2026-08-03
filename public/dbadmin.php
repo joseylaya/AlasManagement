@@ -1,13 +1,15 @@
 <?php
 // ─────────────────────────────────────────────────────────────────────────────
 // ALAS OS — Lightweight SQLite Database Browser
-// Self-contained, no dependencies. Local dev only.
+// Self-contained, no dependencies. In production it is enabled explicitly and
+// protected by the server's HTTP authentication configuration.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Load APP_ENV from .env
+// Docker passes application settings to PHP-FPM as environment variables. Use
+// those first: the production image intentionally does not contain .env.
 $envFile = __DIR__ . '/../.env';
-$appEnv  = 'production';
-if (file_exists($envFile)) {
+$appEnv  = getenv('APP_ENV') ?: 'production';
+if (!getenv('APP_ENV') && file_exists($envFile)) {
     foreach (file($envFile) as $line) {
         $line = trim($line);
         if (str_starts_with($line, 'APP_ENV=')) {
@@ -15,7 +17,8 @@ if (file_exists($envFile)) {
         }
     }
 }
-if (!in_array($appEnv, ['local', 'development', 'dev', 'testing'])) {
+$dbAdminEnabled = filter_var(getenv('DBADMIN_ENABLED'), FILTER_VALIDATE_BOOLEAN);
+if (!in_array($appEnv, ['local', 'development', 'dev', 'testing'], true) && !$dbAdminEnabled) {
     http_response_code(403); die('<h1>403 Forbidden — DB Admin disabled in production.</h1>');
 }
 
