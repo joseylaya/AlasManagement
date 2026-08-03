@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OwnerDrawal;
 use App\Models\CompensationRecord;
+use App\Models\OwnerCapitalInjection;
 use Carbon\Carbon;
 
 class FinanceService
@@ -75,4 +76,8 @@ class FinanceService
     {
         return (float) CompensationRecord::whereIn('status', ['approved', 'payable'])->sum('amount');
     }
+
+    public static function getCapitalAddedThisMonth(): float { return (float) OwnerCapitalInjection::where('status','posted')->whereBetween('contribution_date',[now()->startOfMonth(),now()->endOfMonth()])->sum('amount'); }
+    public static function getTotalOwnerCapital(): float { return (float) OwnerCapitalInjection::where('status','posted')->sum('amount'); }
+    public static function getOwnerWithdrawalsThisMonth(): float { return (float) abs(CashTransaction::where('type','owner_withdrawal')->whereBetween('transaction_date',[now()->startOfMonth(),now()->endOfMonth()])->sum('amount')); }
 }

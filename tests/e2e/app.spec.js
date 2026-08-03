@@ -1,15 +1,15 @@
 import { expect, test } from '@playwright/test';
 
 const credentials = {
-    owner: { email: 'owner@alas.com', password: 'password' },
-    manager: { email: 'manager@alas.com', password: 'password' },
-    staff: { email: 'staff@alas.com', password: 'password' },
+    owner: { username: 'owner', password: 'password' },
+    manager: { username: 'manager', password: 'password' },
+    staff: { username: 'staff', password: 'password' },
 };
 
 async function signIn(page, role) {
     await page.goto('/login');
-    await page.getByLabel('Work email').fill(credentials[role].email);
-    await page.getByLabel('Password').fill(credentials[role].password);
+    await page.getByLabel('Username').fill(credentials[role].username);
+    await page.getByRole('textbox', { name: 'Password' }).fill(credentials[role].password);
     await page.getByRole('button', { name: /^Sign in/ }).click();
     await expect(page).toHaveURL(/\/(?:dashboard)?$/);
 }
@@ -18,8 +18,8 @@ test('sign-in is production-ready on desktop', async ({ page }) => {
     await page.goto('/login');
 
     await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
-    await expect(page.getByLabel('Work email')).toBeVisible();
-    await expect(page.getByLabel('Password')).toBeVisible();
+    await expect(page.getByLabel('Username')).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Password' })).toBeVisible();
     await expect(page.getByText('Quick Demo Access')).toHaveCount(0);
     await expect(page.locator('aside[aria-label="Business Manager editorial background"]')).toBeVisible();
 });
@@ -156,7 +156,7 @@ test('staff order submission enters the approval workflow and manager can approv
     await expect(staffPage).toHaveURL(/\/orders$/);
     const staffOrderTable = staffPage.getByRole('table');
     await expect(staffOrderTable.getByText(customerName)).toBeVisible();
-    await expect(staffOrderTable.getByText('Pending Approval')).toBeVisible();
+    await expect(staffOrderTable.locator('tr', { hasText: customerName }).getByText('Pending Approval')).toBeVisible();
 
     const managerContext = await browser.newContext();
     const managerPage = await managerContext.newPage();

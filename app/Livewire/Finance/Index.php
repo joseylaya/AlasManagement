@@ -12,6 +12,12 @@ use App\Models\User;
 use App\Actions\PayCompensationAction;
 use App\Services\ActivityLogService;
 use App\Services\NotificationService;
+use App\Actions\Finance\CreateCapitalInjectionAction;
+use App\Actions\Finance\ReverseCapitalInjectionAction;
+use App\Models\FinancialAccount;
+use App\Models\OwnerCapitalInjection;
+use Illuminate\Support\Str;
+use Livewire\WithFileUploads;
 
 use App\Services\FinanceService;
 use Exception;
@@ -20,7 +26,7 @@ use Livewire\WithPagination;
 
 class Index extends Component
 {
-    use WithPagination;
+    use WithPagination, WithFileUploads;
 
     public string $search = '';
     public string $selectedType = '';
@@ -39,6 +45,20 @@ class Index extends Component
     public $drawal_amount = '';
     public string $drawal_date = '';
     public string $drawal_reason = 'Owner Monthly Drawdown';
+    public bool $showCapitalModal = false;
+    public bool $showCapitalConfirmation = false;
+    public $capital_amount = '';
+    public ?int $capital_financial_account_id = null;
+    public string $capital_date = '';
+    public string $capital_funding_source = '';
+    public string $capital_reference_number = '';
+    public string $capital_description = '';
+    public string $capital_remarks = '';
+    public $capital_proof = null;
+    public string $capital_client_uuid = '';
+    public ?int $reversingCapitalId = null;
+    public string $capital_reversal_reason = '';
+    public bool $capital_reversal_override = false;
 
     public bool $showCompensationModal = false;
     public ?int $compensation_user_id = null;
@@ -52,6 +72,8 @@ class Index extends Component
     {
         $this->expense_date = date('Y-m-d');
         $this->drawal_date = date('Y-m-d');
+        $this->capital_date = date('Y-m-d');
+        $this->capital_client_uuid = (string) Str::uuid();
         $firstCategory = ExpenseCategory::where('status', 'active')->first();
         if ($firstCategory) {
             $this->expense_category_id = $firstCategory->id;
@@ -60,6 +82,21 @@ class Index extends Component
         $this->compensationStatus = request()->string('compensation_status')->value();
         $this->highlightCompensationId = request()->integer('compensation') ?: null;
     }
+
+    public function reviewCapitalInjection(): void {
+        abort_unless(auth()->user()->can('create', OwnerCapitalInjection::class),403);
+        $this->validate(['capital_amount'=>'required|numeric|min:0.01','capital_financial_account_id'=>'required|exists:financial_accounts,id','capital_date'=>'required|date|before_or_equal:'.now()->addYear()->toDateString(),'capital_funding_source'=>'required|string|max:120','capital_reference_number'=>'nullable|string|max:100|unique:owner_capital_injections,reference_number','capital_description'=>'nullable|string|max:1000','capital_remarks'=>'nullable|string|max:1000','capital_proof'=>'nullable|image|mimes:jpg,jpeg,png,webp|max:5120']);
+        abort_unless(FinancialAccount::whereKey($this->capital_financial_account_id)->where('is_active',true)->exists(),422);
+        $this->showCapitalConfirmation=true;
+    }
+    public function saveCapitalInjection(): void {
+        abort_unless(auth()->user()->can('create', OwnerCapitalInjection::class),403);
+        $proofPath=$this->capital_proof?->store('finance-proofs/capital-injections/'.now()->format('Y/m'),'public');
+        $capital=CreateCapitalInjectionAction::execute(['client_uuid'=>$this->capital_client_uuid,'amount'=>$this->capital_amount,'financial_account_id'=>$this->capital_financial_account_id,'contribution_date'=>$this->capital_date,'funding_source'=>$this->capital_funding_source,'reference_number'=>$this->capital_reference_number ?: null,'description'=>$this->capital_description ?: null,'remarks'=>$this->capital_remarks ?: null,'proof_path'=>$proofPath],auth()->user());
+        $this->reset('capital_amount','capital_financial_account_id','capital_funding_source','capital_reference_number','capital_description','capital_remarks','capital_proof'); $this->capital_client_uuid=(string) Str::uuid(); $this->capital_date=date('Y-m-d'); $this->showCapitalModal=false; $this->showCapitalConfirmation=false;
+        session()->flash('success','₱'.number_format($capital->amount,2).' was added to '.$capital->account->name.'. Recorded as Owner Capital Injection.');
+    }
+    public function reverseCapitalInjection(int $capitalId): void { $capital=OwnerCapitalInjection::findOrFail($capitalId); abort_unless(auth()->user()->can('reverse',$capital),403); $capital=ReverseCapitalInjectionAction::execute($capital,$this->capital_reversal_reason,auth()->user(),$this->capital_reversal_override); $this->reset('reversingCapitalId','capital_reversal_reason','capital_reversal_override'); session()->flash('success',"Capital Injection {$capital->capital_injection_number} was reversed successfully."); }
 
     public function saveExpense(): void
     {
@@ -148,6 +185,9 @@ class Index extends Component
         $todayExpenses = $canAccessFinance ? FinanceService::getTodayExpenses() : null;
         $monthlyProfit = $canAccessFinance ? FinanceService::getMonthlyProfit() : null;
         $availableFunds = $canAccessFinance ? FinanceService::getAvailableBusinessFunds() : null;
+        $capitalAddedThisMonth = $canAccessFinance ? FinanceService::getCapitalAddedThisMonth() : 0;
+        $totalOwnerCapital = $canAccessFinance ? FinanceService::getTotalOwnerCapital() : 0;
+        $ownerWithdrawalsThisMonth = $canAccessFinance ? FinanceService::getOwnerWithdrawalsThisMonth() : 0;
 
         $query = CashTransaction::with(['user', 'order', 'expense', 'ownerDrawal']);
 
@@ -179,6 +219,11 @@ class Index extends Component
             'todayExpenses' => $todayExpenses,
             'monthlyProfit' => $monthlyProfit,
             'availableFunds' => $availableFunds,
+            'capitalAddedThisMonth' => $capitalAddedThisMonth,
+            'totalOwnerCapital' => $totalOwnerCapital,
+            'ownerWithdrawalsThisMonth' => $ownerWithdrawalsThisMonth,
+            'capitalInjections' => $canAccessFinance ? OwnerCapitalInjection::with('account')->latest('contribution_date')->take(12)->get() : collect(),
+            'financialAccounts' => FinancialAccount::where('is_active', true)->orderBy('name')->get(),
             'cashTransactions' => $cashTransactions,
             'expenseCategories' => $expenseCategories,
             'canAccessFinance' => $canAccessFinance,

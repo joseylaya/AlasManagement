@@ -17,6 +17,7 @@ class CashTransaction extends Model
         'type',
         'direction',
         'amount',
+        'financial_account_id',
         'order_id',
         'expense_id',
         'owner_drawal_id',
