@@ -12,6 +12,7 @@ class Product extends Model
 
     protected $fillable = [
         'product_name',
+        'storefront_product_id',
         'sku',
         'category',
         'color',
@@ -33,6 +34,11 @@ class Product extends Model
     public function inventory()
     {
         return $this->hasOne(Inventory::class);
+    }
+
+    public function storefrontProduct()
+    {
+        return $this->belongsTo(StorefrontProduct::class);
     }
 
     public function orderItems()

@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\StockMovement;
+use App\Models\StorefrontProduct;
 use App\Models\User;
 use App\Services\ActivityLogService;
 use Illuminate\Support\Facades\Auth;
@@ -16,8 +17,13 @@ class CreateProductAction
     {
         $userId = $user ? $user->id : Auth::id();
 
-        return DB::transaction(function () use ($data, $userId) {
+        return DB::transaction(function () use ($data, $user, $userId) {
+            $storefrontProduct = ! empty($data['storefront_product_id'])
+                ? StorefrontProduct::findOrFail($data['storefront_product_id'])
+                : UpsertStorefrontProductAction::execute($data, null, $user);
+
             $product = Product::create([
+                'storefront_product_id' => $storefrontProduct->id,
                 'product_name' => $data['product_name'],
                 'sku' => strtoupper(trim($data['sku'])),
                 'category' => $data['category'] ?? 'Uncategorized',

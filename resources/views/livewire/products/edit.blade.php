@@ -12,6 +12,21 @@
 
     <form wire:submit.prevent="save" class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
 
+        <div class="space-y-4 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4">
+            <div>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-700">Storefront product</h3>
+                <p class="mt-1 text-xs text-slate-500">These details are shared by every size and color linked to this customer-facing product.</p>
+            </div>
+            <div><label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">Product group *</label><select wire:model.live="storefront_product_id" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm">@foreach($storefrontProducts as $storefrontProduct)<option value="{{ $storefrontProduct->id }}">{{ $storefrontProduct->name }}</option>@endforeach</select></div>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div><label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">Customer-facing name *</label><input wire:model="storefront_name" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm">@error('storefront_name')<span class="mt-1 block text-xs font-semibold text-rose-500">{{ $message }}</span>@enderror</div>
+                <div><label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">Slug *</label><input wire:model="storefront_slug" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 font-mono text-sm">@error('storefront_slug')<span class="mt-1 block text-xs font-semibold text-rose-500">{{ $message }}</span>@enderror</div>
+                <div><label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">Material</label><input wire:model="material" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm"></div>
+                <div class="grid grid-cols-2 items-end gap-3"><label class="flex items-center gap-3 pb-3 text-sm font-semibold text-slate-700"><input type="checkbox" wire:model="is_featured" class="rounded border-slate-300"> Featured</label><label class="grid gap-1 text-xs font-bold uppercase text-slate-700">Visibility<select wire:model="storefront_status" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-normal normal-case"><option value="active">Active</option><option value="inactive">Inactive</option><option value="archived">Archived</option></select></label></div>
+            </div>
+            <div><label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">Storefront description</label><textarea wire:model="storefront_description" rows="3" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm"></textarea></div>
+        </div>
+
         <div class="space-y-4">
             <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Product Identification</h3>
             
@@ -66,6 +81,7 @@
                 <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Description</label>
                 <textarea wire:model="description" rows="3" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 focus:bg-white"></textarea>
             </div>
+            <div><label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">Primary image URL</label><input type="url" wire:model="image_url" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm" placeholder="https://...">@error('image_url')<span class="mt-1 block text-xs font-semibold text-rose-500">{{ $message }}</span>@enderror</div>
         </div>
 
         <div class="border-t border-slate-100 pt-4 space-y-4">
