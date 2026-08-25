@@ -12,17 +12,7 @@ class Create extends Component
 
     public ?int $storefront_product_id = null;
 
-    public string $storefront_name = '';
-
-    public string $storefront_slug = '';
-
-    public string $storefront_description = '';
-
     public string $material = '';
-
-    public bool $is_featured = false;
-
-    public string $storefront_status = 'active';
 
     public string $image_url = '';
 
@@ -39,18 +29,13 @@ class Create extends Component
     public int $min_stock_threshold = 10;
 
     public array $variants = [
-        ['size' => 'L', 'sku' => '', 'initial_stock' => 20],
+        ['size' => 'L', 'initial_stock' => 20],
     ];
 
     protected array $rules = [
         'product_name' => 'required|string|max:255',
         'storefront_product_id' => 'nullable|exists:storefront_products,id',
-        'storefront_name' => 'required_without:storefront_product_id|nullable|string|max:255',
-        'storefront_slug' => 'nullable|string|max:255|alpha_dash|unique:storefront_products,slug',
-        'storefront_description' => 'nullable|string',
         'material' => 'nullable|string|max:120',
-        'is_featured' => 'boolean',
-        'storefront_status' => 'required|in:active,inactive,archived',
         'image_url' => 'nullable|url|max:2048',
         'category' => 'required|string|max:100',
         'color' => 'nullable|string|max:100',
@@ -60,13 +45,12 @@ class Create extends Component
         'min_stock_threshold' => 'required|integer|min:0',
         'variants' => 'required|array|min:1',
         'variants.*.size' => 'required|string|max:50|distinct:ignore_case',
-        'variants.*.sku' => 'required|string|max:100|distinct:ignore_case|unique:products,sku',
         'variants.*.initial_stock' => 'required|integer|min:0',
     ];
 
     public function addVariant(): void
     {
-        $this->variants[] = ['size' => '', 'sku' => '', 'initial_stock' => 0];
+        $this->variants[] = ['size' => '', 'initial_stock' => 0];
     }
 
     public function removeVariant(int $index): void
@@ -86,12 +70,12 @@ class Create extends Component
         $products = CreateProductVariantsAction::execute([
             'product_name' => $this->product_name,
             'storefront_product_id' => $this->storefront_product_id,
-            'storefront_name' => $this->storefront_name ?: $this->product_name,
-            'storefront_slug' => $this->storefront_slug,
-            'storefront_description' => $this->storefront_description ?: $this->description,
+            'storefront_name' => $this->product_name,
+            'storefront_slug' => '',
+            'storefront_description' => $this->description,
             'material' => $this->material,
-            'is_featured' => $this->is_featured,
-            'storefront_status' => $this->storefront_status,
+            'is_featured' => false,
+            'storefront_status' => 'active',
             'image_url' => $this->image_url ?: null,
             'category' => $this->category,
             'color' => $this->color,
