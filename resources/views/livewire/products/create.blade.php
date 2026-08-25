@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between">
         <div>
             <h2 class="text-lg font-extrabold text-slate-900">Add New Clothing Item</h2>
-            <p class="text-xs text-slate-500">Add product details, variant info, pricing, and initial inventory</p>
+            <p class="text-xs text-slate-500">Add shared product details, size variants, pricing, and initial inventory</p>
         </div>
         <a href="{{ route('products.index') }}" wire:navigate class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors">
             ← Back to Products
@@ -41,21 +41,15 @@
         <div class="space-y-4">
             <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Product Identification</h3>
             
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Product Name *</label>
                     <input type="text" wire:model="product_name" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 focus:bg-white" placeholder="ALAS Heavyweight Tee - Black">
                     @error('product_name') <span class="text-xs text-rose-500 font-semibold mt-1 block">{{ $message }}</span> @enderror
                 </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Product SKU *</label>
-                    <input type="text" wire:model="sku" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-amber-500 focus:bg-white" placeholder="ALAS-OS-BLK-L">
-                    @error('sku') <span class="text-xs text-rose-500 font-semibold mt-1 block">{{ $message }}</span> @enderror
-                </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Category *</label>
                     <select wire:model="category" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 focus:bg-white">
@@ -74,10 +68,6 @@
                     <input type="text" wire:model="color" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 focus:bg-white" placeholder="Washed Black">
                 </div>
 
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Size</label>
-                    <input type="text" wire:model="size" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 focus:bg-white" placeholder="S, M, L, XL, OS">
-                </div>
             </div>
 
             <div>
@@ -85,6 +75,41 @@
                 <textarea wire:model="description" rows="3" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 focus:bg-white" placeholder="Fabric details, GSM specs, fit instructions..."></textarea>
             </div>
             <div><label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">Primary image URL</label><input type="url" wire:model="image_url" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm" placeholder="https://..."><p class="mt-1 text-xs text-slate-400">Used as the storefront fallback until gallery images are configured.</p>@error('image_url')<span class="mt-1 block text-xs font-semibold text-rose-500">{{ $message }}</span>@enderror</div>
+        </div>
+
+        <div class="border-t border-slate-100 pt-4 space-y-4">
+            <div class="flex items-center justify-between gap-4">
+                <div>
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Size Variants</h3>
+                    <p class="mt-1 text-xs text-slate-500">Each size gets its own SKU and starting stock.</p>
+                </div>
+                <button type="button" wire:click="addVariant" class="shrink-0 rounded-xl bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-100">+ Add Size</button>
+            </div>
+
+            @error('variants') <span class="block text-xs font-semibold text-rose-500">{{ $message }}</span> @enderror
+
+            <div class="space-y-3">
+                @foreach($variants as $index => $variant)
+                    <div wire:key="variant-{{ $index }}" class="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:grid-cols-[1fr_2fr_1fr_auto] sm:items-start">
+                        <div>
+                            <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">Size *</label>
+                            <input type="text" wire:model="variants.{{ $index }}.size" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold uppercase" placeholder="S">
+                            @error("variants.$index.size") <span class="mt-1 block text-xs font-semibold text-rose-500">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">SKU *</label>
+                            <input type="text" wire:model="variants.{{ $index }}.sku" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 font-mono text-sm" placeholder="ALAS-TEE-BLK-S">
+                            @error("variants.$index.sku") <span class="mt-1 block text-xs font-semibold text-rose-500">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">Initial Stock *</label>
+                            <input type="number" min="0" wire:model="variants.{{ $index }}.initial_stock" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold">
+                            @error("variants.$index.initial_stock") <span class="mt-1 block text-xs font-semibold text-rose-500">{{ $message }}</span> @enderror
+                        </div>
+                        <button type="button" wire:click="removeVariant({{ $index }})" @disabled(count($variants) === 1) class="mt-6 rounded-xl px-3 py-2.5 text-xs font-bold text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-30" aria-label="Remove size {{ $index + 1 }}">Remove</button>
+                    </div>
+                @endforeach
+            </div>
         </div>
 
         <div class="border-t border-slate-100 pt-4 space-y-4">
@@ -106,15 +131,8 @@
         </div>
 
         <div class="border-t border-slate-100 pt-4 space-y-4">
-            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Initial Stock & Thresholds</h3>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Initial Stock Count *</label>
-                    <input type="number" wire:model="initial_stock" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-amber-500 focus:bg-white">
-                    @error('initial_stock') <span class="text-xs text-rose-500 font-semibold mt-1 block">{{ $message }}</span> @enderror
-                </div>
-
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Stock Threshold</h3>
+            <div>
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Low Stock Alert Threshold *</label>
                     <input type="number" wire:model="min_stock_threshold" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-amber-500 focus:bg-white">
