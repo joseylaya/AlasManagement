@@ -3,12 +3,17 @@
 namespace App\Livewire\Products;
 
 use App\Actions\UpdateProductAction;
+use App\Actions\SyncStorefrontProductImagesAction;
 use App\Models\Product;
 use App\Models\StorefrontProduct;
+use App\Services\ProductImageStorageService;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 class Edit extends Component
 {
+    use WithFileUploads;
+
     public Product $product;
 
     public string $product_name = '';
@@ -27,7 +32,11 @@ class Edit extends Component
 
     public string $storefront_status = 'active';
 
-    public string $image_url = '';
+    public array $photos = [];
+
+    public array $existingImages = [];
+
+    public array $removedImageIds = [];
 
     public string $sku = '';
 
@@ -58,7 +67,11 @@ class Edit extends Component
         $this->material = $product->storefrontProduct?->material ?? '';
         $this->is_featured = $product->storefrontProduct?->is_featured ?? false;
         $this->storefront_status = $product->storefrontProduct?->status ?? 'active';
-        $this->image_url = $product->image_url ?? '';
+        $this->existingImages = $product->storefrontProduct?->images->map(fn ($image) => [
+            'id' => $image->id,
+            'url' => $image->image_url,
+            'alt' => $image->alt_text,
+        ])->values()->all() ?? [];
         $this->sku = $product->sku;
         $this->category = $product->category;
         $this->color = $product->color ?? '';
@@ -81,7 +94,10 @@ class Edit extends Component
             'material' => 'nullable|string|max:120',
             'is_featured' => 'boolean',
             'storefront_status' => 'required|in:active,inactive,archived',
-            'image_url' => 'nullable|url|max:2048',
+            'photos' => 'nullable|array|max:8',
+            'photos.*' => 'image|mimes:jpg,jpeg,png,webp|max:8192',
+            'removedImageIds' => 'array',
+            'removedImageIds.*' => 'integer',
             'sku' => 'required|string|max:100|unique:products,sku,'.$this->product->id,
             'category' => 'required|string|max:100',
             'color' => 'nullable|string|max:100',
@@ -98,7 +114,14 @@ class Edit extends Component
     {
         $this->validate();
 
-        UpdateProductAction::execute($this->product, [
+        $storage = app(ProductImageStorageService::class);
+        if ($this->photos) {
+            $storage->ensureBucket();
+        }
+        $uploads = collect($this->photos)->map(fn ($photo) => $storage->upload($photo, $this->storefront_slug ?: $this->product_name))->all();
+        $removedUrls = collect($this->product->storefrontProduct?->images ?? [])->whereIn('id', $this->removedImageIds)->pluck('image_url');
+
+        $product = UpdateProductAction::execute($this->product, [
             'product_name' => $this->product_name,
             'storefront_product_id' => $this->storefront_product_id,
             'storefront_name' => $this->storefront_name,
@@ -107,7 +130,7 @@ class Edit extends Component
             'material' => $this->material,
             'is_featured' => $this->is_featured,
             'storefront_status' => $this->storefront_status,
-            'image_url' => $this->image_url ?: null,
+            'image_url' => $uploads[0]['url'] ?? $this->product->image_url,
             'update_storefront_product' => true,
             'sku' => $this->sku,
             'category' => $this->category,
@@ -120,8 +143,28 @@ class Edit extends Component
             'status' => $this->status,
         ]);
 
+        SyncStorefrontProductImagesAction::execute($product->storefrontProduct, $uploads, $this->removedImageIds);
+        $removedUrls->each(fn ($url) => $storage->deleteByPublicUrl($url));
+
         session()->flash('success', "Product {$this->product->product_name} updated successfully!");
         $this->redirect(route('products.index'), navigate: true);
+    }
+
+    public function removeExistingImage(int $imageId): void
+    {
+        $image = collect($this->existingImages)->firstWhere('id', $imageId);
+        if (! $image) {
+            return;
+        }
+
+        $this->removedImageIds[] = $imageId;
+        $this->existingImages = collect($this->existingImages)->reject(fn ($item) => $item['id'] === $imageId)->values()->all();
+    }
+
+    public function removeNewPhoto(int $index): void
+    {
+        unset($this->photos[$index]);
+        $this->photos = array_values($this->photos);
     }
 
     public function render()

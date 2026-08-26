@@ -13,12 +13,35 @@ class Order extends Model
     protected $fillable = [
         'order_number',
         'client_uuid',
+        'public_token',
+        'checkout_idempotency_key',
+        'currency',
+        'commerce_mode',
+        'paymongo_checkout_session_id',
+        'paymongo_checkout_url',
+        'paymongo_payment_intent_id',
+        'paymongo_payment_method_id',
+        'paymongo_payment_id',
+        'paymongo_qr_image_url',
+        'paymongo_qr_expires_at',
+        'paymongo_payment_attempt',
+        'payment_error_code',
+        'paid_at',
         'user_id',
         'customer_name',
         'customer_phone',
         'customer_email',
         'delivery_method',
         'shipping_address',
+        'delivery_address_snapshot',
+        'delivery_provider',
+        'delivery_service',
+        'shipping_quote_id',
+        'shipping_quote_source',
+        'shipping_status',
+        'tracking_number',
+        'tracking_url',
+        'tracking_email_sent_at',
         'meetup_date',
         'meetup_location',
         'order_status',
@@ -32,6 +55,8 @@ class Order extends Model
         'payment_status',
         'payment_method',
         'total_amount',
+        'subtotal_amount',
+        'shipping_amount',
         'notes',
         'created_by',
         'updated_by',
@@ -39,9 +64,16 @@ class Order extends Model
 
     protected $casts = [
         'total_amount' => 'decimal:2',
-        'meetup_date'  => 'date',
-        'approved_at'  => 'datetime',
+        'subtotal_amount' => 'decimal:2',
+        'shipping_amount' => 'decimal:2',
+        'delivery_address_snapshot' => 'array',
+        'meetup_date' => 'date',
+        'approved_at' => 'datetime',
         'server_updated_at' => 'datetime',
+        'paid_at' => 'datetime',
+        'paymongo_qr_expires_at' => 'datetime',
+        'paymongo_payment_attempt' => 'integer',
+        'tracking_email_sent_at' => 'datetime',
     ];
 
     // ─── Relationships ────────────────────────────────────────────
@@ -116,9 +148,9 @@ class Order extends Model
     {
         return match ($this->approval_status) {
             'pending_approval' => 'Pending Approval',
-            'approved'         => 'Approved',
-            'rejected'         => 'Rejected',
-            default            => ucfirst($this->approval_status),
+            'approved' => 'Approved',
+            'rejected' => 'Rejected',
+            default => ucfirst($this->approval_status),
         };
     }
 
@@ -126,9 +158,9 @@ class Order extends Model
     {
         return match ($this->approval_status) {
             'pending_approval' => 'orange',
-            'approved'         => 'emerald',
-            'rejected'         => 'red',
-            default            => 'gray',
+            'approved' => 'emerald',
+            'rejected' => 'red',
+            default => 'gray',
         };
     }
 }

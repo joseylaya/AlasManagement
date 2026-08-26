@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Actions\CreateProductAction;
 use App\Actions\CreateProductVariantsAction;
+use App\Actions\SyncStorefrontProductImagesAction;
 use App\Livewire\Products\Create;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -114,5 +115,24 @@ class ProductManagementTest extends TestCase
 
         $this->assertDatabaseCount('products', 0);
         $this->assertDatabaseCount('storefront_products', 0);
+    }
+
+    public function test_multiple_storefront_images_are_ordered_and_primary_image_is_shared_by_variants(): void
+    {
+        $user = User::factory()->create(['role' => 'manager']);
+        $product = CreateProductAction::execute([
+            'product_name' => 'ALAS Gallery Tee', 'sku' => 'ALAS-GALLERY-L', 'category' => 'T-Shirts',
+            'size' => 'L', 'selling_price' => 750, 'cost_price' => 300,
+        ], $user);
+
+        $this->actingAs($user);
+        SyncStorefrontProductImagesAction::execute($product->storefrontProduct, [
+            ['url' => 'https://example.supabase.co/storage/v1/object/public/product-images/gallery/front.webp'],
+            ['url' => 'https://example.supabase.co/storage/v1/object/public/product-images/gallery/detail.webp'],
+        ]);
+
+        $this->assertDatabaseHas('storefront_product_images', ['storefront_product_id' => $product->storefront_product_id, 'image_url' => 'https://example.supabase.co/storage/v1/object/public/product-images/gallery/front.webp', 'sort_order' => 0]);
+        $this->assertDatabaseHas('storefront_product_images', ['storefront_product_id' => $product->storefront_product_id, 'image_url' => 'https://example.supabase.co/storage/v1/object/public/product-images/gallery/detail.webp', 'sort_order' => 1]);
+        $this->assertSame('https://example.supabase.co/storage/v1/object/public/product-images/gallery/front.webp', $product->fresh()->image_url);
     }
 }

@@ -54,10 +54,25 @@
                 <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">Description</label>
                 <textarea wire:model="description" rows="3" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm" placeholder="Product details, fit, and care instructions"></textarea>
             </div>
-            <div>
-                <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">Image URL</label>
-                <input type="url" wire:model="image_url" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm" placeholder="https://...">
-                @error('image_url')<span class="mt-1 block text-xs font-semibold text-rose-500">{{ $message }}</span>@enderror
+            <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-4">
+                <label class="block cursor-pointer">
+                    <span class="block text-xs font-bold uppercase tracking-wider text-slate-700">Product photos</span>
+                    <span class="mt-1 block text-xs leading-5 text-slate-500">Upload up to 8 close-up, front, back, and detail photos. JPG, PNG, and WebP are converted to lightweight WebP automatically.</span>
+                    <input type="file" wire:model="photos" multiple accept="image/jpeg,image/png,image/webp" class="mt-3 block w-full text-xs text-slate-600 file:mr-4 file:rounded-xl file:border-0 file:bg-slate-900 file:px-4 file:py-2.5 file:text-xs file:font-bold file:text-white hover:file:bg-slate-700">
+                </label>
+                <div wire:loading wire:target="photos" class="mt-3 text-xs font-semibold text-amber-600">Preparing previews…</div>
+                @error('photos')<span class="mt-2 block text-xs font-semibold text-rose-500">{{ $message }}</span>@enderror
+                @error('photos.*')<span class="mt-2 block text-xs font-semibold text-rose-500">{{ $message }}</span>@enderror
+                @if($photos)
+                    <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        @foreach($photos as $index => $photo)
+                            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                                <img src="{{ $photo->temporaryUrl() }}" alt="Product preview {{ $index + 1 }}" class="aspect-[4/5] w-full object-cover">
+                                <p class="px-2 py-1.5 text-[10px] font-semibold text-slate-500">{{ $index === 0 ? 'Primary photo' : 'Photo '.($index + 1) }}</p>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
             </div>
         </div>
 

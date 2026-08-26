@@ -18,12 +18,14 @@ RUN apk add --no-cache \
         icu-dev \
         libzip-dev \
         oniguruma-dev \
+        postgresql-dev \
         sqlite-dev \
     && docker-php-ext-install -j"$(nproc)" \
         intl \
         mbstring \
         opcache \
         pdo_mysql \
+        pdo_pgsql \
         pdo_sqlite \
         zip
 

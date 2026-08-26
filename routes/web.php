@@ -18,11 +18,14 @@ use App\Livewire\Notifications\Manage as NotificationsManage;
 use App\Livewire\Reports\Index as ReportsIndex;
 use App\Livewire\Settings\Index as SettingsIndex;
 use App\Livewire\Users\Index as UsersIndex;
+use App\Livewire\AiSupport\Index as AiSupportIndex;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\OfflineSyncController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PushSubscriptionController;
+use App\Http\Controllers\Api\AdminSupportConversationController;
+use App\Http\Controllers\Api\AdminAiKnowledgeController;
 
 // ─── Guest Routes ────────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
@@ -57,6 +60,23 @@ Route::middleware('auth')->group(function () {
     Route::get('/', DashboardIndex::class)->name('dashboard');
     Route::get('/dashboard', DashboardIndex::class);
     Route::get('/account', AccountIndex::class)->name('account.index');
+    Route::get('/ai-support', AiSupportIndex::class)->name('ai-support.index');
+
+    Route::prefix('api/v1/admin/support')->middleware('role:owner,manager,staff')->group(function () {
+        Route::get('/conversations', [AdminSupportConversationController::class, 'index']);
+        Route::get('/conversations/{conversation}', [AdminSupportConversationController::class, 'show']);
+        Route::post('/conversations/{conversation}/messages', [AdminSupportConversationController::class, 'send']);
+        Route::post('/conversations/{conversation}/takeover', [AdminSupportConversationController::class, 'takeover']);
+        Route::post('/conversations/{conversation}/resume-ai', [AdminSupportConversationController::class, 'resume']);
+        Route::post('/conversations/{conversation}/resolve', [AdminSupportConversationController::class, 'resolve']);
+    });
+    Route::prefix('api/v1/admin/ai/knowledge')->middleware('role:owner,manager')->group(function () {
+        Route::get('/', [AdminAiKnowledgeController::class, 'index']);
+        Route::post('/', [AdminAiKnowledgeController::class, 'store']);
+        Route::patch('/{document}', [AdminAiKnowledgeController::class, 'update']);
+        Route::post('/{document}/disable', [AdminAiKnowledgeController::class, 'disable']);
+        Route::post('/{document}/reindex', [AdminAiKnowledgeController::class, 'reindex']);
+    });
 
     // ─── Products — All roles can VIEW; Manager/Owner can CREATE/EDIT
     Route::get('/products', ProductsIndex::class)->name('products.index');

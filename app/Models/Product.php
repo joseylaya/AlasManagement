@@ -22,6 +22,10 @@ class Product extends Model
         'cost_price',
         'image_url',
         'status',
+        'weight_grams',
+        'package_length_cm',
+        'package_width_cm',
+        'package_height_cm',
         'created_by',
         'updated_by',
     ];

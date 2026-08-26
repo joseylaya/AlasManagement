@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Contracts\AiProvider;
+use App\Services\Ai\GeminiProvider;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use App\Models\OwnerCapitalInjection;
@@ -14,7 +16,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(AiProvider::class, GeminiProvider::class);
     }
 
     /**

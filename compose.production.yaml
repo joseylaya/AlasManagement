@@ -10,8 +10,6 @@ services:
       APP_DEBUG: "false"
       APP_TIMEZONE: Asia/Manila
       APP_URL: https://www.jmgaming.site
-      DB_CONNECTION: sqlite
-      DB_DATABASE: /var/www/html/database/database.sqlite
       LOG_LEVEL: warning
     volumes:
       - ./database:/var/www/html/database

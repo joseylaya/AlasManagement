@@ -3,18 +3,23 @@
 namespace App\Livewire\Products;
 
 use App\Actions\CreateProductVariantsAction;
+use App\Actions\SyncStorefrontProductImagesAction;
 use App\Models\StorefrontProduct;
+use App\Services\ProductImageStorageService;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 class Create extends Component
 {
+    use WithFileUploads;
+
     public string $product_name = '';
 
     public ?int $storefront_product_id = null;
 
     public string $material = '';
 
-    public string $image_url = '';
+    public array $photos = [];
 
     public string $category = 'T-Shirts';
 
@@ -36,7 +41,8 @@ class Create extends Component
         'product_name' => 'required|string|max:255',
         'storefront_product_id' => 'nullable|exists:storefront_products,id',
         'material' => 'nullable|string|max:120',
-        'image_url' => 'nullable|url|max:2048',
+        'photos' => 'nullable|array|max:8',
+        'photos.*' => 'image|mimes:jpg,jpeg,png,webp|max:8192',
         'category' => 'required|string|max:100',
         'color' => 'nullable|string|max:100',
         'description' => 'nullable|string',
@@ -67,6 +73,12 @@ class Create extends Component
     {
         $this->validate();
 
+        $storage = app(ProductImageStorageService::class);
+        if ($this->photos) {
+            $storage->ensureBucket();
+        }
+        $uploads = collect($this->photos)->map(fn ($photo) => $storage->upload($photo, $this->product_name))->all();
+
         $products = CreateProductVariantsAction::execute([
             'product_name' => $this->product_name,
             'storefront_product_id' => $this->storefront_product_id,
@@ -76,7 +88,7 @@ class Create extends Component
             'material' => $this->material,
             'is_featured' => false,
             'storefront_status' => 'active',
-            'image_url' => $this->image_url ?: null,
+            'image_url' => $uploads[0]['url'] ?? null,
             'category' => $this->category,
             'color' => $this->color,
             'description' => $this->description,
@@ -84,6 +96,8 @@ class Create extends Component
             'cost_price' => $this->cost_price,
             'min_stock_threshold' => $this->min_stock_threshold,
         ], $this->variants);
+
+        SyncStorefrontProductImagesAction::execute($products->first()->storefrontProduct, $uploads);
 
         $count = $products->count();
         session()->flash('success', "{$this->product_name} created successfully with {$count} size ".str('variant')->plural($count).'!');

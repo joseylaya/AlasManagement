@@ -239,6 +239,13 @@
             Activity Logs
         </a>
 
+        <a href="{{ route('ai-support.index') }}" wire:navigate @click="drawerOpen=false"
+           class="flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] font-semibold transition-all
+                  {{ request()->routeIs('ai-support.*') ? 'bg-white text-[#111111]' : 'text-white/60 hover:bg-white/10 hover:text-white' }}">
+            <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path d="M8 10h8M8 14h5M5 20l-1 1v-4a8 8 0 1 1 3 3H5z"/></svg>
+            AI Support
+        </a>
+
         @if(auth()->check() && (auth()->user()->isOwner() || auth()->user()->isManager()))
         <a href="{{ route('announcements.index') }}" wire:navigate @click="drawerOpen=false"
            class="flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] font-semibold transition-all
@@ -516,6 +523,13 @@
                     <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
                 Activity Logs
+            </a>
+
+            <a href="{{ route('ai-support.index') }}" wire:navigate
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all
+                      {{ request()->routeIs('ai-support.*') ? 'bg-[#111111] text-white' : 'text-[#555555] hover:bg-[#F5F5F5] hover:text-[#111111]' }}">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path d="M8 10h8M8 14h5M5 20l-1 1v-4a8 8 0 1 1 3 3H5z"/></svg>
+                AI Support
             </a>
 
             @if(auth()->check() && (auth()->user()->isOwner() || auth()->user()->isManager()))

@@ -81,7 +81,32 @@
                 <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Description</label>
                 <textarea wire:model="description" rows="3" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 focus:bg-white"></textarea>
             </div>
-            <div><label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">Primary image URL</label><input type="url" wire:model="image_url" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm" placeholder="https://...">@error('image_url')<span class="mt-1 block text-xs font-semibold text-rose-500">{{ $message }}</span>@enderror</div>
+            <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-4">
+                <label class="block cursor-pointer">
+                    <span class="block text-xs font-bold uppercase tracking-wider text-slate-700">Product photos</span>
+                    <span class="mt-1 block text-xs leading-5 text-slate-500">Add up to 8 photos per upload. They are resized and converted to WebP before being stored in Supabase.</span>
+                    <input type="file" wire:model="photos" multiple accept="image/jpeg,image/png,image/webp" class="mt-3 block w-full text-xs text-slate-600 file:mr-4 file:rounded-xl file:border-0 file:bg-slate-900 file:px-4 file:py-2.5 file:text-xs file:font-bold file:text-white hover:file:bg-slate-700">
+                </label>
+                <div wire:loading wire:target="photos" class="mt-3 text-xs font-semibold text-amber-600">Preparing previews…</div>
+                @error('photos')<span class="mt-2 block text-xs font-semibold text-rose-500">{{ $message }}</span>@enderror
+                @error('photos.*')<span class="mt-2 block text-xs font-semibold text-rose-500">{{ $message }}</span>@enderror
+                @if($existingImages || $photos)
+                    <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        @foreach($existingImages as $index => $image)
+                            <div wire:key="existing-image-{{ $image['id'] }}" class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                                <img src="{{ $image['url'] }}" alt="{{ $image['alt'] ?: $storefront_name }}" class="aspect-[4/5] w-full object-cover">
+                                <div class="flex items-center justify-between gap-2 px-2 py-1.5"><span class="text-[10px] font-semibold text-slate-500">{{ $index === 0 ? 'Primary' : 'Photo '.($index + 1) }}</span><button type="button" wire:click="removeExistingImage({{ $image['id'] }})" class="text-[10px] font-bold text-rose-600">Remove</button></div>
+                            </div>
+                        @endforeach
+                        @foreach($photos as $index => $photo)
+                            <div wire:key="new-image-{{ $index }}" class="overflow-hidden rounded-xl border border-amber-200 bg-white">
+                                <img src="{{ $photo->temporaryUrl() }}" alt="New product preview {{ $index + 1 }}" class="aspect-[4/5] w-full object-cover">
+                                <div class="flex items-center justify-between gap-2 px-2 py-1.5"><span class="text-[10px] font-semibold text-amber-700">New photo</span><button type="button" wire:click="removeNewPhoto({{ $index }})" class="text-[10px] font-bold text-rose-600">Remove</button></div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
         </div>
 
         <div class="border-t border-slate-100 pt-4 space-y-4">
