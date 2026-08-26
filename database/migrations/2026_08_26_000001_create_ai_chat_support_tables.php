@@ -70,12 +70,22 @@ return new class extends Migration
             $table->boolean('is_ai_generated')->default(false);
             $table->string('client_message_id', 100)->nullable();
             $table->string('external_message_id')->nullable();
-            $table->foreignUuid('reply_to_message_id')->nullable()->constrained('support_messages')->nullOnDelete();
+            // Add the self-referencing constraint after the table exists. PostgreSQL
+            // cannot resolve this reference while the table's primary key is still
+            // being created.
+            $table->uuid('reply_to_message_id')->nullable();
             $table->string('delivery_status', 20)->default('SENT');
             $table->timestamps();
             $table->timestamp('edited_at')->nullable();
             $table->unique(['conversation_id', 'client_message_id']);
             $table->index(['conversation_id', 'created_at']);
+        });
+
+        Schema::table('support_messages', function (Blueprint $table) {
+            $table->foreign('reply_to_message_id')
+                ->references('id')
+                ->on('support_messages')
+                ->nullOnDelete();
         });
 
         Schema::create('support_assignments', function (Blueprint $table) {
