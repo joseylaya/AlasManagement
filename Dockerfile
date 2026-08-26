@@ -17,12 +17,17 @@ WORKDIR /var/www/html
 RUN apk add --no-cache \
         icu-dev \
         gmp-dev \
+        libjpeg-turbo-dev \
+        libpng-dev \
+        libwebp-dev \
         libzip-dev \
         oniguruma-dev \
         postgresql-dev \
         sqlite-dev \
+    && docker-php-ext-configure gd --with-jpeg --with-webp \
     && docker-php-ext-install -j1 \
         bcmath \
+        gd \
         gmp \
         intl \
         mbstring \
