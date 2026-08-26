@@ -1,5 +1,6 @@
 services:
   php:
+    image: alasmanagement-app:latest
     build:
       context: .
     restart: unless-stopped
@@ -20,8 +21,7 @@ services:
       - app-network
 
   queue:
-    build:
-      context: .
+    image: alasmanagement-app:latest
     restart: unless-stopped
     env_file:
       - .env
@@ -35,8 +35,7 @@ services:
       - app-network
 
   scheduler:
-    build:
-      context: .
+    image: alasmanagement-app:latest
     restart: unless-stopped
     env_file:
       - .env
