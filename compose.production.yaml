@@ -5,12 +5,44 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+      - .env.postgres
+      - .env.paymongo
     environment:
       APP_ENV: production
       APP_DEBUG: "false"
       APP_TIMEZONE: Asia/Manila
       APP_URL: https://www.jmgaming.site
       LOG_LEVEL: warning
+    volumes:
+      - ./database:/var/www/html/database
+      - ./storage:/var/www/html/storage
+    networks:
+      - app-network
+
+  queue:
+    build:
+      context: .
+    restart: unless-stopped
+    env_file:
+      - .env
+      - .env.postgres
+      - .env.paymongo
+    command: php artisan queue:work --sleep=1 --tries=3 --max-time=3600
+    volumes:
+      - ./database:/var/www/html/database
+      - ./storage:/var/www/html/storage
+    networks:
+      - app-network
+
+  scheduler:
+    build:
+      context: .
+    restart: unless-stopped
+    env_file:
+      - .env
+      - .env.postgres
+      - .env.paymongo
+    command: php artisan schedule:work
     volumes:
       - ./database:/var/www/html/database
       - ./storage:/var/www/html/storage
@@ -26,15 +58,16 @@ services:
       - "80:80"
     volumes:
       - ./public:/var/www/html/public:ro
-      # Nginx must also see Laravel's public disk; public/storage links here.
       - ./storage/app/public:/var/www/html/storage/app/public:ro
       - ./docker/nginx/conf.d/production.conf:/etc/nginx/conf.d/default.conf:ro
-      # Kept outside this repository: this existing file contains the DB admin
-      # Basic Auth credentials used by the production reverse proxy.
       - ../docker/nginx/conf.d/.dbadmin.htpasswd:/etc/nginx/secrets/dbadmin.htpasswd:ro
     networks:
       - app-network
+      - splitshare
 
 networks:
   app-network:
     driver: bridge
+  splitshare:
+    external: true
+    name: splitshare_splitshare

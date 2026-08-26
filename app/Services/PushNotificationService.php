@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Notification;
 use App\Models\PushSubscription;
 use App\Models\User;
+use App\Jobs\SendWebPushNotification;
 use Illuminate\Support\Facades\Log;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
@@ -13,7 +14,7 @@ class PushNotificationService
 {
     public static function send(Notification $notification): void
     {
-        static::sendToUserIds($notification, [$notification->user_id]);
+        static::queueForUserIds($notification, [$notification->user_id]);
     }
 
     public static function sendToRoles(Notification $notification, array $roles): void
@@ -23,10 +24,21 @@ class PushNotificationService
             ->pluck('id')
             ->all();
 
-        static::sendToUserIds($notification, $userIds);
+        static::queueForUserIds($notification, $userIds);
     }
 
-    private static function sendToUserIds(Notification $notification, array $userIds): void
+    /** @param array<int, int> $userIds */
+    private static function queueForUserIds(Notification $notification, array $userIds): void
+    {
+        if (empty($userIds)) {
+            return;
+        }
+
+        SendWebPushNotification::dispatch($notification->id, array_values(array_unique($userIds)))->afterCommit();
+    }
+
+    /** @param array<int, int> $userIds */
+    public function deliverToUserIds(Notification $notification, array $userIds): void
     {
         if (app()->environment('testing')) {
             return;

@@ -7,15 +7,17 @@
 
     {{-- Greeting --}}
     <div>
-        <p class="text-[12px] text-[#AAAAAA] uppercase tracking-wider font-semibold mb-1">
+        <p class="mb-1 text-[12px] font-medium uppercase tracking-[0.06em] text-[#888888]">
             @php $hour = (int) date('H'); echo $hour < 12 ? 'Good Morning' : ($hour < 17 ? 'Good Afternoon' : 'Good Evening'); @endphp,
             {{ auth()->user()->name }}
         </p>
-        <h2 class="text-[22px] font-bold text-[#111111]">My Orders Overview</h2>
-        <p class="text-[13px] text-[#888888] mt-0.5">Build your monthly sales progress and incentives.</p>
+        <h2 class="text-[22px] font-bold leading-tight tracking-tight text-[#111111]">My Orders Overview</h2>
+        <p class="mt-1 text-[14px] leading-5 text-[#777777]">Build your monthly sales progress and incentives.</p>
     </div>
 
     @include('livewire.dashboard._partials.gallery-carousel')
+
+    @include('livewire.dashboard._partials.performance-ladder')
 
     {{-- Incentive motivation --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -120,6 +122,8 @@
 
     @include('livewire.dashboard._partials.gallery-carousel')
 
+    @include('livewire.dashboard._partials.performance-ladder')
+
     {{-- Manager KPIs --}}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="bg-white rounded-xl border border-[#E8E8E8] p-5">
@@ -210,6 +214,8 @@
     </div>
 
     @include('livewire.dashboard._partials.gallery-carousel')
+
+    @include('livewire.dashboard._partials.owner-performance-monitor')
 
     {{-- Owner KPI Row 1 --}}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">

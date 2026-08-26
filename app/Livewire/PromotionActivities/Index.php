@@ -6,6 +6,7 @@ use App\Models\CompensationRecord;
 use App\Models\PromotionActivity;
 use App\Services\ActivityLogService;
 use App\Services\NotificationService;
+use App\Services\PerformancePointService;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -45,10 +46,10 @@ class Index extends Component
         $this->validate([
             'activity_type' => 'required|string|max:100',
             'activity_date' => 'required|date|before_or_equal:today',
-            'campaign' => 'nullable|string|max:120',
-            'platform' => 'nullable|string|max:120',
-            'outcome' => 'nullable|string|max:1000',
-            'proof' => 'nullable|image|max:5120',
+            'campaign' => 'required|string|max:120',
+            'platform' => 'required|string|max:120',
+            'outcome' => 'required|string|max:1000',
+            'proof' => 'required|image|max:5120',
         ]);
 
         $proofPath = $this->proof?->store('activity-proofs', 'public');
@@ -74,6 +75,7 @@ class Index extends Component
         );
 
         $activity->load('user');
+        PerformancePointService::awardActivitySubmitted($activity);
         NotificationService::notifyPromotionActivitySubmitted($activity);
 
         $this->resetSubmissionForm();

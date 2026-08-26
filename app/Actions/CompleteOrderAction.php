@@ -6,6 +6,7 @@ use App\Models\CashTransaction;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\ActivityLogService;
+use App\Services\PerformancePointService;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Auth;
@@ -43,6 +44,9 @@ class CompleteOrderAction
                 "Order {$order->order_number} marked as completed. Cash transaction recorded: ₱" . number_format($order->total_amount, 2),
                 $order
             );
+
+            $order->load('creator');
+            PerformancePointService::awardOrderCompleted($order);
 
             return $order->fresh();
         });

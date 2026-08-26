@@ -92,10 +92,18 @@ class Create extends Component
 
     public function saveOrder(): void
     {
-        if (empty($this->cartItems)) {
-            session()->flash('error', 'Please add at least one product item to the order.');
-            return;
-        }
+        $this->validate([
+            'customer_name' => 'required|string|max:255',
+            'customer_phone' => 'required|string|max:50',
+            'delivery_method' => 'required|in:shipping,meetup',
+            'shipping_address' => 'required_if:delivery_method,shipping|nullable|string|max:1000',
+            'meetup_location' => 'required_if:delivery_method,meetup|nullable|string|max:255',
+            'meetup_date' => 'required_if:delivery_method,meetup|nullable|date',
+            'payment_method' => 'required|string|max:50',
+            'payment_status' => 'required|in:paid,pending',
+            'order_status' => 'required|in:pending,confirmed,packed,completed',
+            'cartItems' => 'required|array|min:1',
+        ]);
 
         try {
             $orderData = [

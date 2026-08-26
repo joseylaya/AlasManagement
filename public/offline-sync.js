@@ -1,15 +1,22 @@
-/* Offline queueing is temporarily disabled while the live login flow is stabilized. */
+/* Offline queueing is temporarily disabled while the live login flow is stabilized.
+ * The service worker remains enabled because it is required for web push. */
 (() => {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then((registrations) => {
-      registrations.forEach((registration) => registration.unregister());
-    });
+  const registerPushWorker = async () => {
+    if (!('serviceWorker' in navigator)) return;
+
+    try {
+      await navigator.serviceWorker.register('/sw.js?v=7', { scope: '/' });
+    } catch (error) {
+      console.warn('ALAS push service worker could not be registered.', error);
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', registerPushWorker, { once: true });
+  } else {
+    registerPushWorker();
   }
-  if ('caches' in window) {
-    caches.keys().then((keys) => keys
-      .filter((key) => key.startsWith('alas-'))
-      .forEach((key) => caches.delete(key)));
-  }
+
   window.AlasOffline = { setUser() {}, sync() {} };
   return;
 

@@ -23,7 +23,6 @@ Route::prefix('v1/storefront')->group(function () {
 });
 
 Route::post('/v1/webhooks/paymongo', PayMongoWebhookController::class)->middleware('throttle:120,1');
-
 Route::prefix('v1/support')->middleware('throttle:30,1')->group(function () {
     Route::post('/conversations', [SupportConversationController::class, 'store']);
     Route::get('/conversations/{conversation}', [SupportConversationController::class, 'show']);

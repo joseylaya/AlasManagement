@@ -1,4 +1,4 @@
-const VERSION = 'v5';
+const VERSION = 'v7';
 const SHELL_CACHE = `alas-shell-${VERSION}`;
 const SHELL = [
   '/login',
@@ -59,6 +59,12 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
 
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
+
+  // Livewire and notification scripts must always come from the current
+  // deployment. Cached versions can submit an outdated Livewire payload and
+  // leave the app blank after a release.
+  if (url.pathname === '/push.js' || url.pathname === '/offline-sync.js'
+    || url.pathname.startsWith('/livewire') || url.pathname.startsWith('/vendor/livewire/')) return;
 
   if (request.mode === 'navigate') {
     event.respondWith((async () => {

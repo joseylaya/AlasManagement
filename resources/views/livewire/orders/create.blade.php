@@ -126,12 +126,14 @@
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Customer Name *</label>
                     <input type="text" wire:model="customer_name" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 focus:bg-white" placeholder="Walk-in Customer / Juan Cruz">
+                    @error('customer_name') <p class="mt-1 text-xs font-semibold text-rose-600">{{ $message }}</p> @enderror
                 </div>
 
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Phone Number</label>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Phone Number *</label>
                         <input type="text" wire:model="customer_phone" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 focus:bg-white" placeholder="0917-000-0000">
+                        @error('customer_phone') <p class="mt-1 text-xs font-semibold text-rose-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Delivery Method</label>
@@ -146,16 +148,19 @@
                     <div>
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Shipping Address *</label>
                         <textarea wire:model="shipping_address" rows="3" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 focus:bg-white" placeholder="Full delivery address with landmark..."></textarea>
+                        @error('shipping_address') <p class="mt-1 text-xs font-semibold text-rose-600">{{ $message }}</p> @enderror
                     </div>
                 @else
                     <div class="space-y-3">
                         <div>
                             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Meetup Location *</label>
                             <input type="text" wire:model="meetup_location" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 focus:bg-white" placeholder="SM Megamall, Trinoma Entrance...">
+                            @error('meetup_location') <p class="mt-1 text-xs font-semibold text-rose-600">{{ $message }}</p> @enderror
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Meetup Date</label>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Meetup Date *</label>
                             <input type="date" wire:model="meetup_date" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 focus:bg-white">
+                            @error('meetup_date') <p class="mt-1 text-xs font-semibold text-rose-600">{{ $message }}</p> @enderror
                         </div>
                     </div>
                 @endif
@@ -195,9 +200,10 @@
                 </div>
 
                 <div class="pt-4">
+                    @error('cartItems') <p class="mb-2 text-xs font-semibold text-rose-600">{{ $message }}</p> @enderror
                     <button
                         type="button"
-                        @click="if (!navigator.onLine) { window.AlasOffline.queue('sale', { customer_name: $wire.customer_name, customer_phone: $wire.customer_phone, customer_email: $wire.customer_email, delivery_method: $wire.delivery_method, shipping_address: $wire.shipping_address, meetup_date: $wire.meetup_date, meetup_location: $wire.meetup_location, payment_method: $wire.payment_method, payment_status: $wire.payment_status, order_status: $wire.order_status, notes: $wire.notes, items: @js($cartItems) }); } else { $wire.saveOrder(); }"
+                        @click="if (!$wire.customer_name.trim() || !$wire.customer_phone.trim() || !$wire.cartItems.length || ($wire.delivery_method === 'shipping' && !$wire.shipping_address.trim()) || ($wire.delivery_method === 'meetup' && (!$wire.meetup_location.trim() || !$wire.meetup_date))) { $wire.saveOrder(); return; } if (!navigator.onLine) { window.AlasOffline.queue('sale', { customer_name: $wire.customer_name, customer_phone: $wire.customer_phone, customer_email: $wire.customer_email, delivery_method: $wire.delivery_method, shipping_address: $wire.shipping_address, meetup_date: $wire.meetup_date, meetup_location: $wire.meetup_location, payment_method: $wire.payment_method, payment_status: $wire.payment_status, order_status: $wire.order_status, notes: $wire.notes, items: @js($cartItems) }); } else { $wire.saveOrder(); }"
                         wire:loading.attr="disabled"
                         wire:target="saveOrder"
                         class="min-h-[48px] w-full px-4 py-3 bg-amber-500 hover:bg-amber-600 disabled:cursor-wait disabled:opacity-60 text-slate-950 font-bold text-sm rounded-xl shadow-md transition-colors"

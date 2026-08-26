@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\User;
 use App\Services\ActivityLogService;
 use App\Services\InventoryService;
+use App\Services\PerformancePointService;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -138,6 +139,9 @@ class CreateOrderAction
                 ['client_uuid' => $order->client_uuid, 'sync_source' => $order->sync_source]
             );
 
+            $order->load('creator');
+            PerformancePointService::awardOrderSubmitted($order);
+
             // FIX: Let CompleteOrderAction handle cash recording when status transitions.
             // Do NOT call it inside CreateOrderAction. If order is already completed on
             // creation, call it AFTER the transaction completes.
@@ -146,6 +150,7 @@ class CreateOrderAction
             }
 
             if ($order->order_status === 'completed') {
+                PerformancePointService::awardOrderCompleted($order);
                 CompleteOrderAction::execute($order->fresh(), User::find($userId));
             }
 

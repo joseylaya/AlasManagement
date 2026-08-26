@@ -2,7 +2,7 @@
 <html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <title>Sign In — Business Manager</title>
     <meta name="description" content="Secure sign in for Business Manager.">
     <meta name="theme-color" content="#000000">
@@ -14,13 +14,15 @@
     <meta property="og:image" content="{{ url('/images/alas-logo-master.png') }}">
     <meta name="twitter:card" content="summary">
     <meta name="twitter:image" content="{{ url('/images/alas-logo-master.png') }}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 15px;
+            line-height: 1.4;
+        }
+        @media (max-width: 1023px) { input, select, textarea { font-size: 16px !important; } }
         @keyframes login-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
         .login-auth-card { animation: login-rise 420ms cubic-bezier(.22, .8, .25, 1) both; }
         @media (prefers-reduced-motion: reduce) { .login-auth-card { animation: none; } }
@@ -58,13 +60,5 @@
         </aside>
     </div>
     @livewireScripts
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then((registrations) => registrations.forEach((registration) => registration.unregister()));
-        }
-        if ('caches' in window) {
-            caches.keys().then((keys) => keys.filter((key) => key.startsWith('alas-')).forEach((key) => caches.delete(key)));
-        }
-    </script>
 </body>
 </html>

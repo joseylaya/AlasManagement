@@ -2,7 +2,7 @@
 <html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'Business Manager' }}</title>
     <meta name="description" content="Inventory, orders, and finance management in one workspace.">
@@ -23,13 +23,28 @@
     <meta name="twitter:description" content="Inventory, orders, and finance management in one workspace.">
     <meta name="twitter:image" content="{{ url('/images/alas-logo-master.png') }}">
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
     <style>
-        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 15px;
+            line-height: 1.4;
+            -webkit-font-smoothing: antialiased;
+        }
+        button, input, select, textarea { font: inherit; }
+        /* Applied by the modal visibility observer below; hidden modal markup must not lock the page. */
+        html.modal-open, body.modal-open {
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+        body.modal-open {
+            position: fixed;
+            left: 0;
+            right: 0;
+            width: 100%;
+        }
+        .app-modal-sheet, [data-modal-sheet] { overscroll-behavior: contain; }
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 4px; }
@@ -59,6 +74,8 @@
 
         /* Mobile navigation stays in the same light visual system as the desktop app. */
         @media (max-width: 1023px) {
+            /* iOS zooms focused controls below 16px even when the viewport is locked. */
+            input, select, textarea { font-size: 16px !important; }
             ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); }
             aside.lg\\:hidden, header.lg\\:hidden, nav.lg\\:hidden { background: #ffffff !important; border-color: #e8e8e8 !important; }
             aside.lg\\:hidden .text-white, header.lg\\:hidden .text-white { color: #111111 !important; }
@@ -82,10 +99,18 @@
           notificationsOpen: false,
           pushConfigured: @js((bool) config('services.web_push.public_key')),
           pushPermission: typeof Notification === 'undefined' ? 'unsupported' : Notification.permission,
+          pushEnabled: false,
           pushBusy: false,
           pushMessage: '',
           accountMenuOpen: false,
           announcementModal: null,
+          async init() {
+              if (this.pushConfigured && window.AlasPush) this.pushEnabled = await window.AlasPush.status();
+              window.addEventListener('alas:open-notification', (event) => {
+                  this.announcementModal = event.detail;
+                  this.notificationsOpen = false;
+              });
+          },
           openAnnouncement(notification) {
               this.announcementModal = notification;
               if (!notification.is_read) {
@@ -97,13 +122,13 @@
           },
           async enablePush() {
               this.pushBusy = true; this.pushMessage = '';
-              try { await window.AlasPush.subscribe(); this.pushPermission = Notification.permission; this.pushMessage = 'Device notifications are on.'; }
+              try { await window.AlasPush.subscribe(); this.pushPermission = Notification.permission; this.pushEnabled = true; this.pushMessage = 'Device notifications are on.'; }
               catch (error) { this.pushMessage = error.message || 'Unable to enable device notifications.'; }
               finally { this.pushBusy = false; }
           },
           async disablePush() {
               this.pushBusy = true; this.pushMessage = '';
-              try { await window.AlasPush.unsubscribe(); this.pushPermission = 'default'; this.pushMessage = 'Device notifications are off.'; }
+              try { await window.AlasPush.unsubscribe(); this.pushEnabled = false; this.pushMessage = 'Device notifications are off.'; }
               catch (error) { this.pushMessage = error.message || 'Unable to disable device notifications.'; }
               finally { this.pushBusy = false; }
           }
@@ -320,29 +345,27 @@
     <div class="flex-1 flex justify-center">
         <img src="{{ asset('images/alas-logo.png') }}" alt="Business Manager" class="h-11 w-11 rounded-xl object-cover">
     </div>
-    <button type="button" @click="notificationsOpen = true" :aria-expanded="notificationsOpen.toString()" aria-controls="mobile-notifications"
+    <button type="button" @click="notificationsOpen = true; window.AlasNotificationFeed?.refresh()" :aria-expanded="notificationsOpen.toString()" aria-controls="mobile-notifications"
             class="w-11 h-11 flex items-center justify-center rounded-xl hover:bg-white/10 transition-colors relative flex-shrink-0">
         <span class="sr-only">Open notifications</span>
         <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
         </svg>
-        @if($_unreadNotificationCount > 0)
-            <span class="absolute -right-1 -top-1 min-w-4 rounded-full bg-red-500 px-1 py-0.5 text-center text-[9px] font-black leading-none text-white ring-2 ring-[#1A1A1E] animate-pulse">{{ min($_unreadNotificationCount, 99) }}</span>
-        @endif
+        <span data-notification-count class="absolute -right-1 -top-1 min-w-4 rounded-full bg-red-500 px-1 py-0.5 text-center text-[9px] font-black leading-none text-white ring-2 ring-[#1A1A1E] animate-pulse {{ $_unreadNotificationCount ? '' : 'hidden' }}">{{ min($_unreadNotificationCount, 99) }}</span>
     </button>
 </header>
 
 {{-- Mobile notification bottom sheet --}}
 <div id="mobile-notifications" x-show="notificationsOpen" x-cloak class="lg:hidden fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Notifications">
     <div class="absolute inset-0 bg-black/30" @click="notificationsOpen = false" x-transition.opacity></div>
-    <section class="absolute inset-x-0 bottom-0 max-h-[78vh] rounded-t-3xl bg-white shadow-2xl" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
+    <section data-modal-sheet class="absolute inset-x-0 bottom-0 max-h-[78vh] rounded-t-3xl bg-white shadow-2xl" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
         <div class="flex items-center justify-between border-b border-[#E8E8E8] px-5 py-4">
-            <div><h2 class="text-[16px] font-bold text-[#111111]">Notifications</h2><p class="text-[12px] text-[#777777]">{{ $_unreadNotificationCount ? $_unreadNotificationCount . ' unread' : 'You’re all caught up' }}</p></div>
+            <div><h2 class="text-[16px] font-bold text-[#111111]">Notifications</h2><p data-notification-summary class="text-[12px] text-[#777777]">{{ $_unreadNotificationCount ? $_unreadNotificationCount . ' unread' : 'You’re all caught up' }}</p></div>
             <button type="button" @click="notificationsOpen = false" class="min-h-[44px] min-w-[44px] rounded-xl text-[#555555]" aria-label="Close notifications">✕</button>
         </div>
-        <div class="max-h-[60vh] overflow-y-auto p-3">
+        <div data-notification-list="mobile" class="max-h-[60vh] overflow-y-auto p-3">
             <div class="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <div class="flex items-center justify-between gap-3"><div><p class="text-xs font-bold text-slate-800">Device notifications</p><p class="mt-0.5 text-[11px] text-slate-500">Get alerts from this notification inbox.</p></div><button type="button" x-show="pushPermission !== 'granted'" @click="enablePush" :disabled="pushBusy || !pushConfigured" class="min-h-[36px] rounded-lg bg-slate-900 px-3 text-[11px] font-bold text-white disabled:opacity-50"><span x-text="pushBusy ? 'Enabling…' : 'Enable'"></span></button><button type="button" x-show="pushPermission === 'granted'" @click="disablePush" :disabled="pushBusy" class="min-h-[36px] rounded-lg border border-slate-200 px-3 text-[11px] font-bold text-slate-700"><span x-text="pushBusy ? 'Updating…' : 'On'"></span></button></div><p x-show="pushMessage" x-text="pushMessage" class="mt-2 text-[11px] font-semibold text-slate-600"></p><p x-show="!pushConfigured" class="mt-2 text-[11px] text-amber-700">Push notifications are not configured on this server yet.</p></div>
+                <div class="flex items-center justify-between gap-3"><div><p class="text-xs font-bold text-slate-800">Device notifications</p><p class="mt-0.5 text-[11px] text-slate-500">Get alerts from this notification inbox.</p></div><button type="button" x-show="!pushEnabled" @click="enablePush" :disabled="pushBusy || !pushConfigured" class="min-h-[36px] rounded-lg bg-slate-900 px-3 text-[11px] font-bold text-white disabled:opacity-50"><span x-text="pushBusy ? 'Enabling…' : 'Enable'"></span></button><button type="button" x-show="pushEnabled" @click="disablePush" :disabled="pushBusy" class="min-h-[36px] rounded-lg border border-slate-200 px-3 text-[11px] font-bold text-slate-700"><span x-text="pushBusy ? 'Updating…' : 'On'"></span></button></div><p x-show="pushMessage" x-text="pushMessage" class="mt-2 text-[11px] font-semibold text-slate-600"></p><p x-show="!pushConfigured" class="mt-2 text-[11px] text-amber-700">Push notifications are not configured on this server yet.</p></div>
             @forelse($_notifications as $notification)
                 @if(str_starts_with($notification->type, 'announcement.'))
                     <button type="button" @click="openAnnouncement(@js(['id' => $notification->id, 'title' => $notification->title, 'message' => $notification->message, 'image_url' => $notification->announcement?->image_path ? asset('storage/'.$notification->announcement->image_path) : null, 'created_at' => $notification->created_at->diffForHumans(), 'is_read' => $notification->is_read])); notificationsOpen = false" class="mb-2 block w-full rounded-2xl border-l-4 border-amber-400 p-4 text-left transition-colors {{ $notification->is_read ? 'bg-white' : 'bg-amber-50' }}">
@@ -637,16 +660,16 @@
 
             {{-- Notification center (desktop) --}}
             <div class="relative" @click.outside="notificationsOpen = false">
-                <button type="button" @click="notificationsOpen = !notificationsOpen" :aria-expanded="notificationsOpen.toString()" class="relative flex h-9 w-9 items-center justify-center rounded-xl text-[#555555] hover:bg-[#F5F5F5] hover:text-[#111111]" aria-label="Open notifications">
+                <button type="button" @click="notificationsOpen = !notificationsOpen; if (notificationsOpen) window.AlasNotificationFeed?.refresh()" :aria-expanded="notificationsOpen.toString()" class="relative flex h-9 w-9 items-center justify-center rounded-xl text-[#555555] hover:bg-[#F5F5F5] hover:text-[#111111]" aria-label="Open notifications">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-                    @if($_unreadNotificationCount > 0)<span class="absolute -right-1 -top-1 min-w-4 rounded-full bg-red-500 px-1 py-0.5 text-center text-[9px] font-black leading-none text-white ring-2 ring-white animate-pulse">{{ min($_unreadNotificationCount, 99) }}</span>@endif
+                    <span data-notification-count class="absolute -right-1 -top-1 min-w-4 rounded-full bg-red-500 px-1 py-0.5 text-center text-[9px] font-black leading-none text-white ring-2 ring-white animate-pulse {{ $_unreadNotificationCount ? '' : 'hidden' }}">{{ min($_unreadNotificationCount, 99) }}</span>
                 </button>
                 <div x-show="notificationsOpen" x-cloak x-transition class="absolute right-0 top-11 z-50 w-[360px] overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white shadow-2xl">
-                    <div class="border-b border-[#E8E8E8] px-4 py-3"><p class="text-[13px] font-bold text-[#111111]">Notifications</p><p class="text-[11px] text-[#777777]">{{ $_unreadNotificationCount ? $_unreadNotificationCount . ' unread' : 'You’re all caught up' }}</p></div>
+                    <div class="border-b border-[#E8E8E8] px-4 py-3"><p class="text-[13px] font-bold text-[#111111]">Notifications</p><p data-notification-summary class="text-[11px] text-[#777777]">{{ $_unreadNotificationCount ? $_unreadNotificationCount . ' unread' : 'You’re all caught up' }}</p></div>
                     <div class="border-b border-[#E8E8E8] px-3 py-2">
-                        <div class="flex items-center justify-between gap-2"><p class="text-[11px] font-semibold text-slate-600">Device notifications</p><button type="button" x-show="pushPermission !== 'granted'" @click="enablePush" :disabled="pushBusy || !pushConfigured" class="rounded-lg bg-slate-900 px-2.5 py-1.5 text-[10px] font-bold text-white disabled:opacity-50" x-text="pushBusy ? 'Enabling…' : 'Enable push'"></button><button type="button" x-show="pushPermission === 'granted'" @click="disablePush" :disabled="pushBusy" class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-[10px] font-bold text-slate-700">Push on</button></div><p x-show="pushMessage" x-text="pushMessage" class="mt-1 text-[10px] font-semibold text-slate-600"></p><p x-show="!pushConfigured" class="mt-1 text-[10px] text-amber-700">Not configured on this server yet.</p>
+                        <div class="flex items-center justify-between gap-2"><p class="text-[11px] font-semibold text-slate-600">Device notifications</p><button type="button" x-show="!pushEnabled" @click="enablePush" :disabled="pushBusy || !pushConfigured" class="rounded-lg bg-slate-900 px-2.5 py-1.5 text-[10px] font-bold text-white disabled:opacity-50" x-text="pushBusy ? 'Enabling…' : 'Enable push'"></button><button type="button" x-show="pushEnabled" @click="disablePush" :disabled="pushBusy" class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-[10px] font-bold text-slate-700">Push on</button></div><p x-show="pushMessage" x-text="pushMessage" class="mt-1 text-[10px] font-semibold text-slate-600"></p><p x-show="!pushConfigured" class="mt-1 text-[10px] text-amber-700">Not configured on this server yet.</p>
                     </div>
-                    <div class="max-h-[420px] overflow-y-auto p-2">
+                    <div data-notification-list="desktop" class="max-h-[420px] overflow-y-auto p-2">
                         @forelse($_notifications as $notification)
                             @if(str_starts_with($notification->type, 'announcement.'))
                                 <button type="button" @click="openAnnouncement(@js(['id' => $notification->id, 'title' => $notification->title, 'message' => $notification->message, 'image_url' => $notification->announcement?->image_path ? asset('storage/'.$notification->announcement->image_path) : null, 'created_at' => $notification->created_at->diffForHumans(), 'is_read' => $notification->is_read])); notificationsOpen = false" class="mb-1 block w-full rounded-xl border-l-4 border-amber-400 bg-left p-3 text-left hover:bg-amber-50 {{ $notification->is_read ? 'bg-white' : 'bg-amber-50' }}">
@@ -716,8 +739,9 @@
 </div>{{-- end responsive app shell --}}
 
 @livewireScripts
-<script src="/offline-sync.js"></script>
-<script src="/push.js"></script>
+<script src="/offline-sync.js?v=7"></script>
+<script src="/push.js?v=7"></script>
+<script src="/notification-feed.js?v=1"></script>
 <script>
     window.AlasPush?.configure(@json(config('services.web_push.public_key')));
     let navigationDelayTimer;
@@ -740,12 +764,42 @@
         }
     };
 
+    let modalScrollLockActive = false;
+    let modalScrollPosition = 0;
+
+    const syncModalScrollLock = () => {
+        const hasVisibleModal = [...document.querySelectorAll('.app-modal-sheet, [data-modal-sheet]')]
+            .some((modal) => modal.getClientRects().length > 0 && getComputedStyle(modal).visibility !== 'hidden');
+
+        document.documentElement.classList.toggle('modal-open', hasVisibleModal);
+        document.body.classList.toggle('modal-open', hasVisibleModal);
+
+        if (hasVisibleModal && !modalScrollLockActive) {
+            modalScrollPosition = window.scrollY;
+            document.body.style.top = `-${modalScrollPosition}px`;
+            modalScrollLockActive = true;
+        } else if (!hasVisibleModal && modalScrollLockActive) {
+            document.body.style.top = '';
+            window.scrollTo({ top: modalScrollPosition, behavior: 'auto' });
+            modalScrollLockActive = false;
+        }
+    };
+
+    new MutationObserver(syncModalScrollLock).observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class', 'style'],
+    });
+    syncModalScrollLock();
+
     document.addEventListener('livewire:navigating', () => {
         setNavigationState(true);
         window.scrollTo({ top: 0, behavior: 'auto' });
     });
     document.addEventListener('livewire:navigated', () => {
         setNavigationState(false);
+        syncModalScrollLock();
     });
     window.addEventListener('pageshow', () => setNavigationState(false));
 </script>

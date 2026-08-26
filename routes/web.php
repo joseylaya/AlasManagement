@@ -43,6 +43,8 @@ Route::post('/logout', function () {
 // ─── Authenticated Routes ─────────────────────────────────────────
 Route::middleware('auth')->group(function () {
 
+    Route::get('/notifications/feed', [NotificationController::class, 'feed'])
+        ->name('notifications.feed');
     Route::get('/notifications/{notification}/open', [NotificationController::class, 'open'])
         ->name('notifications.open');
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'read'])

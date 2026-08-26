@@ -3,6 +3,8 @@
 namespace App\Livewire\Notifications;
 
 use App\Models\Announcement;
+use App\Models\RecurringAnnouncement;
+use App\Services\RecurringAnnouncementService;
 use App\Services\NotificationService;
 use Carbon\Carbon;
 use Livewire\Component;
@@ -21,11 +23,18 @@ class Manage extends Component
     public string $target_role = 'all';
     public string $delivery = 'immediate';
     public string $scheduled_for = '';
+    public ?RecurringAnnouncement $earningReminder = null;
+    public string $earning_title = '';
+    public string $earning_message = '';
+    public string $earning_target_role = 'all';
+    public string $earning_send_time = '20:00';
+    public bool $earning_is_active = true;
 
     public function mount(): void
     {
         abort_unless(auth()->user()->isOwner() || auth()->user()->isManager(), 403);
         $this->scheduled_for = now()->addHour()->format('Y-m-d\\TH:i');
+        $this->loadEarningReminder();
     }
 
     public function save(): void
@@ -72,11 +81,50 @@ class Manage extends Component
         ])->layout('layouts.app', ['pageHeader' => 'Announcements']);
     }
 
+    public function saveEarningReminder(): void
+    {
+        abort_unless(auth()->user()->isOwner() || auth()->user()->isManager(), 403);
+
+        $this->validate([
+            'earning_title' => 'required|string|min:3|max:120',
+            'earning_message' => 'required|string|min:3|max:2000',
+            'earning_target_role' => 'required|in:all,owner,manager,staff',
+            'earning_send_time' => 'required|date_format:H:i',
+            'earning_is_active' => 'boolean',
+        ]);
+
+        $this->earningReminder = RecurringAnnouncement::updateOrCreate(
+            ['key' => RecurringAnnouncementService::SOCIAL_SHARING_EARNING_KEY],
+            [
+                'created_by' => $this->earningReminder?->created_by ?? auth()->id(),
+                'updated_by' => auth()->id(),
+                'target_role' => $this->earning_target_role,
+                'title' => $this->earning_title,
+                'message' => $this->earning_message,
+                'send_time' => $this->earning_send_time.':00',
+                'timezone' => 'Asia/Manila',
+                'is_active' => $this->earning_is_active,
+            ],
+        );
+
+        session()->flash('success', 'Earning opportunity reminder updated.');
+    }
+
     private function resetComposeForm(): void
     {
         $this->reset('title', 'message', 'image');
         $this->target_role = 'all';
         $this->delivery = 'immediate';
         $this->scheduled_for = now()->addHour()->format('Y-m-d\\TH:i');
+    }
+
+    private function loadEarningReminder(): void
+    {
+        $this->earningReminder = RecurringAnnouncement::where('key', RecurringAnnouncementService::SOCIAL_SHARING_EARNING_KEY)->first();
+        $this->earning_title = $this->earningReminder?->title ?? 'Earn more by sharing our posts';
+        $this->earning_message = $this->earningReminder?->message ?? 'Share approved ALAS posts on Facebook or Instagram to earn. Open Promotion Activities for the latest instructions.';
+        $this->earning_target_role = $this->earningReminder?->target_role ?? 'all';
+        $this->earning_send_time = substr((string) ($this->earningReminder?->send_time ?? '20:00'), 0, 5);
+        $this->earning_is_active = $this->earningReminder?->is_active ?? true;
     }
 }

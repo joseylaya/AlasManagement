@@ -7,8 +7,10 @@ use App\Models\DashboardBanner;
 use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\CompensationRecord;
+use App\Models\PerformancePointEntry;
 use App\Models\Setting;
 use App\Services\FinanceService;
+use App\Services\PerformancePointService;
 use Livewire\Component;
 
 class Index extends Component
@@ -57,6 +59,32 @@ class Index extends Component
             $quotaTarget = (int) Setting::getByKey('staff_sales_quota_target', 15);
             $quotaReward = (float) Setting::getByKey('staff_sales_quota_reward', 500);
             $quotaProgress = Order::where('created_by', $user->id)->where('order_status', 'completed')->whereBetween('created_at', [$periodStart, now()])->count();
+        }
+
+        $performanceLeaderboard = collect();
+        $myPerformance = ['total' => 0, 'activity' => 0, 'order_submitted' => 0, 'order_completed' => 0];
+        $myPerformanceRank = null;
+        if ($user->isStaff() || $user->isManager() || $user->isOwner()) {
+            $performanceLeaderboard = PerformancePointService::hallOfFameLeaderboard();
+            if (!$user->isOwner()) {
+                $myPerformance = PerformancePointService::hallOfFameSummary($user);
+                $myPerformanceRank = $performanceLeaderboard->first(fn ($entry) => $entry->user->id === $user->id)?->rank;
+            }
+        }
+
+        // The Owner needs an at-a-glance operational view of Hall of Fame movement.
+        $recentPerformanceEntries = collect();
+        $performanceTotalPoints = 0;
+        $performanceActiveParticipants = 0;
+        if ($user->isOwner()) {
+            $recentPerformanceEntries = PerformancePointEntry::query()
+                ->with('user:id,name')
+                ->latest('awarded_at')
+                ->latest('id')
+                ->take(6)
+                ->get();
+            $performanceTotalPoints = (int) PerformancePointEntry::sum('points');
+            $performanceActiveParticipants = $performanceLeaderboard->where('points', '>', 0)->count();
         }
 
         // ─── Finance data (Owner + Manager only) ─────────────────
@@ -130,6 +158,12 @@ class Index extends Component
             'quotaProgress'       => $quotaProgress,
             'quotaTarget'         => $quotaTarget,
             'quotaReward'         => $quotaReward,
+            'performanceLeaderboard' => $performanceLeaderboard,
+            'myPerformance'       => $myPerformance,
+            'myPerformanceRank'   => $myPerformanceRank,
+            'recentPerformanceEntries' => $recentPerformanceEntries,
+            'performanceTotalPoints' => $performanceTotalPoints,
+            'performanceActiveParticipants' => $performanceActiveParticipants,
         ])->layout('layouts.app', ['pageHeader' => 'Business Command Center']);
     }
 }

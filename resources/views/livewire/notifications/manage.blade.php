@@ -10,6 +10,19 @@
         </div>
     </section>
 
+    <section class="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm sm:p-6">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><p class="text-[11px] font-black uppercase tracking-[0.16em] text-amber-700">Daily earning opportunity</p><h3 class="mt-1 text-[17px] font-black text-slate-900">Facebook and Instagram sharing reminder</h3><p class="mt-1 max-w-2xl text-[12px] leading-relaxed text-slate-600">Notify users that they can earn by sharing approved social posts. This sends once daily in Manila time.</p></div><span class="w-max rounded-full px-3 py-1 text-[10px] font-black uppercase {{ $earning_is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600' }}">{{ $earning_is_active ? 'Active' : 'Paused' }}</span></div>
+        <form wire:submit="saveEarningReminder" class="mt-5 grid gap-4 sm:grid-cols-2">
+            <div class="sm:col-span-2"><label class="text-[12px] font-bold text-slate-700">Title</label><input wire:model="earning_title" maxlength="120" class="mt-1.5 w-full rounded-xl border-amber-200 bg-white px-3.5 py-3 text-[14px] focus:border-amber-500 focus:ring-amber-500">@error('earning_title')<p class="mt-1 text-[11px] font-semibold text-rose-600">{{ $message }}</p>@enderror</div>
+            <div class="sm:col-span-2"><label class="text-[12px] font-bold text-slate-700">Message</label><textarea wire:model="earning_message" rows="4" maxlength="2000" class="mt-1.5 w-full rounded-xl border-amber-200 bg-white px-3.5 py-3 text-[14px] focus:border-amber-500 focus:ring-amber-500"></textarea>@error('earning_message')<p class="mt-1 text-[11px] font-semibold text-rose-600">{{ $message }}</p>@enderror</div>
+            <div><label class="text-[12px] font-bold text-slate-700">Send to</label><select wire:model="earning_target_role" class="mt-1.5 w-full rounded-xl border-amber-200 bg-white px-3.5 py-3 text-[14px]"><option value="all">Everyone</option><option value="owner">Owners</option><option value="manager">Managers</option><option value="staff">Staff / Promoters</option></select></div>
+            <div><label class="text-[12px] font-bold text-slate-700">Daily time (Manila)</label><input type="time" wire:model="earning_send_time" class="mt-1.5 w-full rounded-xl border-amber-200 bg-white px-3.5 py-3 text-[14px]">@error('earning_send_time')<p class="mt-1 text-[11px] font-semibold text-rose-600">{{ $message }}</p>@enderror</div>
+            <label class="flex items-center gap-3 rounded-xl bg-white px-3.5 py-3 text-[13px] font-bold text-slate-700 sm:col-span-2"><input type="checkbox" wire:model="earning_is_active" class="rounded border-amber-300 text-amber-500 focus:ring-amber-500"> Send this reminder every day</label>
+            @if($earningReminder?->last_sent_on)<p class="text-[11px] font-semibold text-slate-500 sm:col-span-2">Last sent: {{ $earningReminder->last_sent_on->setTimezone('Asia/Manila')->format('M j, Y') }}</p>@endif
+            <div class="sm:col-span-2"><button type="submit" wire:loading.attr="disabled" class="min-h-[44px] rounded-xl bg-[#111111] px-5 text-[13px] font-black text-white hover:bg-slate-800"><span wire:loading.remove>Save daily reminder</span><span wire:loading>Saving…</span></button></div>
+        </form>
+    </section>
+
     <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div class="border-b border-slate-100 px-5 py-4"><h3 class="text-[14px] font-bold text-slate-900">Announcement history</h3></div>
         <div class="divide-y divide-slate-100">

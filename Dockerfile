@@ -16,11 +16,14 @@ WORKDIR /var/www/html
 
 RUN apk add --no-cache \
         icu-dev \
+        gmp-dev \
         libzip-dev \
         oniguruma-dev \
         postgresql-dev \
         sqlite-dev \
-    && docker-php-ext-install -j"$(nproc)" \
+    && docker-php-ext-install -j1 \
+        bcmath \
+        gmp \
         intl \
         mbstring \
         opcache \

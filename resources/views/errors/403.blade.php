@@ -7,10 +7,8 @@
     <meta name="theme-color" content="#000000">
     <link rel="icon" type="image/png" href="{{ asset('images/alas-logo.png') }}">
     <link rel="apple-touch-icon" href="{{ asset('images/alas-logo.png') }}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>body { font-family: 'Inter', sans-serif; }</style>
+    <style>body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }</style>
 </head>
 <body class="h-full bg-[#F2F2F2] flex items-center justify-center p-6">
     <div class="text-center max-w-md">
