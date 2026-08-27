@@ -395,4 +395,86 @@ class AiChatQueueTest extends TestCase
 
         $this->assertLessThanOrEqual(1200, $provider->inputBytes);
     }
+
+    public function test_regex_sentences_publish_one_at_a_time_with_the_batch_pending_between_segments(): void
+    {
+        Queue::fake();
+        config()->set('ai_chat.typing_base_ms', 0);
+        config()->set('ai_chat.typing_per_character_ms', 0);
+        config()->set('ai_chat.typing_max_ms', 0);
+        config()->set('ai_chat.segment_delay_ms', 2000);
+        $this->app->instance(AiProvider::class, new class implements AiProvider
+        {
+            public function generate(string $systemInstruction, array $messages, int $maxOutputTokens): array
+            {
+                return ['text' => 'First sentence. Second sentence! Third sentence?', 'model' => 'fake', 'prompt_tokens' => 8, 'completion_tokens' => 8];
+            }
+
+            public function embed(string $text, string $taskType = 'RETRIEVAL_DOCUMENT'): array
+            {
+                return [1.0, 0.0];
+            }
+
+            public function name(): string
+            {
+                return 'fake';
+            }
+        });
+        $conversation = app(CreateSupportConversationAction::class)->execute([])['conversation'];
+        app(SendCustomerSupportMessageAction::class)->execute($conversation, 'hello', 'segments-delayed-1');
+        $batch = SupportAiJob::sole();
+        $batch->update(['status' => 'PROCESSING', 'started_at' => now()]);
+        app(AiResponseService::class)->generate($batch->fresh());
+
+        (new PublishSupportAiResponse($batch->id))->handle(app(AiResponseService::class));
+        $this->assertSame(['First sentence.'], SupportMessage::where('conversation_id', $conversation->id)->where('sender_type', 'AI')->pluck('content')->all());
+        $this->assertSame('TYPING_DELAY', $batch->fresh()->status);
+        $this->assertSame(1, $batch->fresh()->published_segment_count);
+        $nextPublication = Queue::pushed(PublishSupportAiResponse::class)->last();
+        $this->assertNotNull($nextPublication?->delay);
+        $this->assertEqualsWithDelta(2.0, now()->floatDiffInSeconds($nextPublication->delay, false), 0.1);
+
+        (new PublishSupportAiResponse($batch->id))->handle(app(AiResponseService::class));
+        $this->assertSame(['First sentence.', 'Second sentence!'], SupportMessage::where('conversation_id', $conversation->id)->where('sender_type', 'AI')->orderBy('id')->pluck('content')->all());
+        $this->assertSame('TYPING_DELAY', $batch->fresh()->status);
+
+        (new PublishSupportAiResponse($batch->id))->handle(app(AiResponseService::class));
+        $this->assertSame(['First sentence.', 'Second sentence!', 'Third sentence?'], SupportMessage::where('conversation_id', $conversation->id)->where('sender_type', 'AI')->orderBy('id')->pluck('content')->all());
+        $this->assertSame('COMPLETED', $batch->fresh()->status);
+        $this->assertSame(3, $batch->fresh()->published_segment_count);
+    }
+
+    public function test_takeover_after_first_segment_prevents_remaining_segments(): void
+    {
+        Queue::fake();
+        $this->app->instance(AiProvider::class, new class implements AiProvider
+        {
+            public function generate(string $systemInstruction, array $messages, int $maxOutputTokens): array
+            {
+                return ['text' => 'Visible first. Must not publish second.', 'model' => 'fake', 'prompt_tokens' => 6, 'completion_tokens' => 6];
+            }
+
+            public function embed(string $text, string $taskType = 'RETRIEVAL_DOCUMENT'): array
+            {
+                return [1.0, 0.0];
+            }
+
+            public function name(): string
+            {
+                return 'fake';
+            }
+        });
+        $conversation = app(CreateSupportConversationAction::class)->execute([])['conversation'];
+        app(SendCustomerSupportMessageAction::class)->execute($conversation, 'hello', 'segment-takeover-1');
+        $batch = SupportAiJob::sole();
+        $batch->update(['status' => 'PROCESSING', 'started_at' => now()]);
+        app(AiResponseService::class)->generate($batch->fresh());
+        (new PublishSupportAiResponse($batch->id))->handle(app(AiResponseService::class));
+
+        app(TakeOverSupportConversationAction::class)->execute($conversation, User::factory()->create(['role' => 'manager']));
+        (new PublishSupportAiResponse($batch->id))->handle(app(AiResponseService::class));
+
+        $this->assertSame(['Visible first.'], SupportMessage::where('conversation_id', $conversation->id)->where('sender_type', 'AI')->pluck('content')->all());
+        $this->assertSame('CANCELLED', $batch->fresh()->status);
+    }
 }

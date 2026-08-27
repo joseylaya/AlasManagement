@@ -21,5 +21,6 @@ return [
     'typing_base_ms' => (int) env('AI_CHAT_TYPING_BASE_MS', 800),
     'typing_per_character_ms' => (int) env('AI_CHAT_TYPING_PER_CHAR_MS', 15),
     'typing_max_ms' => (int) env('AI_CHAT_TYPING_MAX_MS', 5000),
+    'segment_delay_ms' => (int) env('AI_CHAT_SEGMENT_DELAY_MS', 2000),
     'lock_seconds' => (int) env('AI_CHAT_LOCK_SECONDS', 90),
 ];

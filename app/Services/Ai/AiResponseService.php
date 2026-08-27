@@ -139,9 +139,9 @@ class AiResponseService
         }
     }
 
-    public function publish(SupportAiJob $batch): void
+    public function publish(SupportAiJob $batch, bool $scheduleNext = true): void
     {
-        $published = DB::transaction(function () use ($batch) {
+        $published = DB::transaction(function () use ($batch, $scheduleNext) {
             $lockedBatch = SupportAiJob::query()->lockForUpdate()->find($batch->id);
             if (! $lockedBatch || $lockedBatch->status !== 'TYPING_DELAY') {
                 return false;
@@ -155,21 +155,41 @@ class AiResponseService
                 return false;
             }
 
-            $messages = collect($this->responseSegments((string) $lockedBatch->generated_content))->map(fn ($segment) => SupportMessage::create([
+            $segments = $this->responseSegments((string) $lockedBatch->generated_content);
+            $index = (int) $lockedBatch->published_segment_count;
+            $segment = $segments[$index] ?? null;
+            if (! $segment) {
+                $lockedBatch->update(['status' => 'FAILED', 'finished_at' => now(), 'error_code' => 'EMPTY_RESPONSE_SEGMENT']);
+                $run?->update(['status' => 'FAILED', 'finished_at' => now(), 'error_code' => 'EMPTY_RESPONSE_SEGMENT']);
+
+                return false;
+            }
+            $message = SupportMessage::create([
                 'conversation_id' => $conversation->id,
                 'sender_type' => 'AI',
                 'content' => $segment,
                 'is_ai_generated' => true,
                 'delivery_status' => 'SENT',
-            ]));
-            $updates = ['last_message_at' => now(), 'last_ai_message_at' => now(), 'customer_unread_count' => $conversation->customer_unread_count + 1];
-            if ($lockedBatch->escalate_after_reply) {
+            ]);
+            $publishedCount = $index + 1;
+            $final = $publishedCount >= count($segments);
+            $updates = ['last_message_at' => now(), 'last_ai_message_at' => now()];
+            if ($final) {
+                $updates['customer_unread_count'] = $conversation->customer_unread_count + 1;
+            }
+            if ($final && $lockedBatch->escalate_after_reply) {
                 $updates += ['mode' => SupportConversationMode::AI_PAUSED, 'status' => SupportConversationStatus::NEEDS_ATTENTION];
             }
             $conversation->update($updates);
-            $lockedBatch->update(['status' => 'COMPLETED', 'finished_at' => now(), 'generated_content' => null]);
-            $run?->update(['status' => 'COMPLETED', 'finished_at' => now()]);
-            SupportEvent::create(['conversation_id' => $conversation->id, 'event_type' => $lockedBatch->escalate_after_reply ? 'AI_ESCALATED' : 'AI_REPLIED', 'actor_type' => 'AI', 'metadata' => ['ai_run_id' => $run?->id, 'ai_job_id' => $lockedBatch->id, 'message_ids' => $messages->pluck('id')->all()]]);
+            $lockedBatch->update($final
+                ? ['status' => 'COMPLETED', 'finished_at' => now(), 'generated_content' => null, 'published_segment_count' => $publishedCount]
+                : ['published_segment_count' => $publishedCount]);
+            if ($final) {
+                $run?->update(['status' => 'COMPLETED', 'finished_at' => now()]);
+                SupportEvent::create(['conversation_id' => $conversation->id, 'event_type' => $lockedBatch->escalate_after_reply ? 'AI_ESCALATED' : 'AI_REPLIED', 'actor_type' => 'AI', 'metadata' => ['ai_run_id' => $run?->id, 'ai_job_id' => $lockedBatch->id, 'published_segment_count' => $publishedCount, 'last_message_id' => $message->id]]);
+            } elseif ($scheduleNext) {
+                PublishSupportAiResponse::dispatch($lockedBatch->id)->delay(now()->addMilliseconds(max(0, config('ai_chat.segment_delay_ms'))));
+            }
 
             return true;
         });
@@ -199,7 +219,10 @@ class AiResponseService
         }
 
         if ($immediate) {
-            $this->publish($batch->fresh());
+            do {
+                $this->publish($batch->fresh(), false);
+                $batch->refresh();
+            } while ($batch->status === 'TYPING_DELAY');
 
             return;
         }

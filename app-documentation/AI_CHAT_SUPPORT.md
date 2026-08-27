@@ -52,7 +52,7 @@ Chat generation uses the ordered `AI_MODELS` pool. A model that returns quota ex
 
 `support_ai_jobs` is the durable AI-turn ledger. Every customer message is saved before any AI scheduling occurs. The first message creates one `DEBOUNCING` batch; continuation messages update its last-message boundary and reset the three-second quiet window, capped by an eight-second maximum batch wait. The delayed Laravel transport job is dispatched only once for that batch. Early or duplicate transport executions re-read the authoritative batch and release themselves without calling Gemini.
 
-Ready work is processed oldest-first. A database-backed cache lock permits one active generation per conversation, and numbered global locks cap simultaneous Gemini work across all queue workers. A generated response is stored temporarily as `TYPING_DELAY`, then a separate delayed publication job inserts and broadcasts the sentence bubbles. The generation worker and global LLM slot are therefore released before the human-like display delay.
+Ready work is processed oldest-first. A database-backed cache lock permits one active generation per conversation, and numbered global locks cap simultaneous Gemini work across all queue workers. A generated response is stored temporarily as `TYPING_DELAY`, then a separate delayed publication job inserts and broadcasts the first regex-delimited sentence bubble. Remaining sentence bubbles are published individually at the configured two-second interval. The generation worker and global LLM slot are therefore released before all display delays, and takeover can cancel any remaining unpublished segments.
 
 Customer messages remain intact even when normalized duplicates are removed from the batched prompt. Limits of 8 messages per 30 seconds and 20 per 5 minutes return a server-authored cooldown message without spending an LLM call. Oversized messages are rejected before persistence. The prompt builder uses 4–6 recent messages, an extractive summary of at most approximately 150 tokens, at most 3 knowledge chunks, a target input budget of 2,500 tokens, and a hard ordinary ceiling of 3,000 tokens.
 
@@ -97,6 +97,7 @@ AI_CHAT_HARD_INPUT_TOKENS=3000
 AI_CHAT_TYPING_BASE_MS=800
 AI_CHAT_TYPING_PER_CHAR_MS=15
 AI_CHAT_TYPING_MAX_MS=5000
+AI_CHAT_SEGMENT_DELAY_MS=2000
 ```
 
 The storefront needs its existing `ALAS_MANAGEMENT_URL` plus browser-safe `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for realtime signals. If the latter are absent, chat continues through authoritative refetching.

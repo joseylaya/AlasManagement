@@ -9,7 +9,7 @@ class SupportAiJob extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['conversation_id', 'status', 'priority', 'first_message_id', 'last_message_id', 'batch_started_at', 'ready_at', 'started_at', 'finished_at', 'attempt_count', 'model_used', 'error_code', 'error_message', 'generated_content', 'escalate_after_reply'];
+    protected $fillable = ['conversation_id', 'status', 'priority', 'first_message_id', 'last_message_id', 'batch_started_at', 'ready_at', 'started_at', 'finished_at', 'attempt_count', 'model_used', 'error_code', 'error_message', 'generated_content', 'published_segment_count', 'escalate_after_reply'];
 
     protected function casts(): array
     {
