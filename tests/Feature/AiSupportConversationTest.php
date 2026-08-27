@@ -44,6 +44,40 @@ class AiSupportConversationTest extends TestCase
         Queue::assertPushed(GenerateSupportAiResponse::class, 1);
     }
 
+    public function test_conversation_messages_are_returned_in_stable_chronological_order(): void
+    {
+        $result = app(CreateSupportConversationAction::class)->execute([]);
+        $conversation = $result['conversation'];
+        $conversation->messages()->delete();
+        $timestamp = now()->startOfSecond();
+
+        foreach ([
+            ['00000000-0000-7000-8000-000000000001', 'CUSTOMER', 'First question'],
+            ['00000000-0000-7000-8000-000000000002', 'AI', 'First answer'],
+            ['00000000-0000-7000-8000-000000000003', 'CUSTOMER', 'Second question'],
+            ['00000000-0000-7000-8000-000000000004', 'AI', 'Second answer'],
+        ] as [$id, $sender, $content]) {
+            SupportMessage::forceCreate([
+                'id' => $id,
+                'conversation_id' => $conversation->id,
+                'sender_type' => $sender,
+                'content_type' => 'TEXT',
+                'content' => $content,
+                'delivery_status' => 'SENT',
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
+            ]);
+        }
+
+        $this->withToken($result['token'])
+            ->getJson("/api/v1/support/conversations/{$conversation->id}")
+            ->assertOk()
+            ->assertJsonPath('data.messages.0.content', 'First question')
+            ->assertJsonPath('data.messages.1.content', 'First answer')
+            ->assertJsonPath('data.messages.2.content', 'Second question')
+            ->assertJsonPath('data.messages.3.content', 'Second answer');
+    }
+
     public function test_manual_admin_reply_atomically_takes_over_before_sending(): void
     {
         $admin = User::factory()->create(['role' => 'staff']);

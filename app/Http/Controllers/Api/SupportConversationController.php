@@ -26,7 +26,7 @@ class SupportConversationController extends Controller
         $authenticator->authorize($request, $conversation);
         $conversation->update(['customer_unread_count' => 0]);
         $fresh = $conversation->fresh();
-        $fresh->setRelation('messages', $fresh->messages()->latest()->limit(50)->get()->reverse()->values());
+        $fresh->setRelation('messages', $fresh->messages()->orderByDesc('created_at')->orderByDesc('id')->limit(50)->get()->reverse()->values());
         return response()->json(['data' => $this->conversation($fresh)]);
     }
 
@@ -36,7 +36,7 @@ class SupportConversationController extends Controller
         $authenticator->authorize($request, $conversation);
         $query = $conversation->messages()->orderByDesc('created_at')->orderByDesc('id');
         if ($request->filled('after')) $query->where('created_at', '>', $request->date('after'));
-        $messages = $query->limit(50)->get()->sortBy('created_at')->values();
+        $messages = $query->limit(50)->get()->reverse()->values();
         return response()->json(['data' => $messages]);
     }
 
@@ -50,7 +50,7 @@ class SupportConversationController extends Controller
 
     private function conversation(SupportConversation $conversation): array
     {
-        $latestCustomerMessage = $conversation->messages()->where('sender_type', 'CUSTOMER')->latest()->first();
+        $latestCustomerMessage = $conversation->messages()->where('sender_type', 'CUSTOMER')->orderByDesc('created_at')->orderByDesc('id')->first();
         $latestRun = $latestCustomerMessage ? AiRun::where('trigger_message_id', $latestCustomerMessage->id)->first() : null;
         $isNewAfterResume = ! $conversation->ai_resumed_at || ($latestCustomerMessage?->created_at?->greaterThan($conversation->ai_resumed_at) ?? false);
         $aiPending = $conversation->mode->value === 'AI_ACTIVE'

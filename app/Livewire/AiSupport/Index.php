@@ -48,11 +48,15 @@ class Index extends Component
 
     public function render()
     {
-        $conversations = SupportConversation::query()->with('customer:id,display_name,email')->with(['messages' => fn ($q) => $q->latest()->limit(1)])
+        $conversations = SupportConversation::query()->with('customer:id,display_name,email')->with(['messages' => fn ($q) => $q->orderByDesc('created_at')->orderByDesc('id')->limit(1)])
             ->when($this->search, fn ($q) => $q->whereHas('customer', fn ($c) => $c->where('display_name', 'like', '%'.$this->search.'%')->orWhere('email', 'like', '%'.$this->search.'%')))
             ->when($this->filter !== 'all', fn ($q) => $q->where($this->filter === 'unread' ? 'admin_unread_count' : 'mode', $this->filter === 'unread' ? '>' : '=', $this->filter === 'unread' ? 0 : $this->filter))
             ->orderByDesc('last_message_at')->limit(50)->get();
-        $selected = $this->selectedConversationId ? SupportConversation::with('customer', 'assignedAdmin:id,name', 'messages.senderUser:id,name')->find($this->selectedConversationId) : null;
+        $selected = $this->selectedConversationId ? SupportConversation::with([
+            'customer',
+            'assignedAdmin:id,name',
+            'messages' => fn ($query) => $query->orderBy('created_at')->orderBy('id')->with('senderUser:id,name'),
+        ])->find($this->selectedConversationId) : null;
         return view('livewire.ai-support.index', ['conversations' => $conversations, 'selected' => $selected, 'knowledge' => AiKnowledgeDocument::latest()->limit(50)->get(), 'settings' => AiSetting::first(), 'runs' => AiRun::latest()->limit(25)->get()])->layout('layouts.app', ['pageHeader' => 'AI Support']);
     }
     private function selected(): SupportConversation { return SupportConversation::findOrFail($this->selectedConversationId); }
