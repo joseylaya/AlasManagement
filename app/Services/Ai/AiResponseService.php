@@ -79,14 +79,34 @@ class AiResponseService
                 $run->update(['status' => 'DISCARDED_TAKEOVER', 'finished_at' => now()]);
                 return;
             }
-            $message = SupportMessage::create(['conversation_id' => $locked->id, 'sender_type' => 'AI', 'content' => $content, 'is_ai_generated' => true, 'delivery_status' => 'SENT']);
+            $messages = collect($this->responseSegments($content))->map(fn ($segment) => SupportMessage::create([
+                'conversation_id' => $locked->id,
+                'sender_type' => 'AI',
+                'content' => $segment,
+                'is_ai_generated' => true,
+                'delivery_status' => 'SENT',
+            ]));
             $updates = ['last_message_at' => now(), 'last_ai_message_at' => now(), 'customer_unread_count' => $locked->customer_unread_count + 1];
             if ($escalate) $updates += ['mode' => SupportConversationMode::AI_PAUSED, 'status' => SupportConversationStatus::NEEDS_ATTENTION];
             $locked->update($updates);
             $run->update(['status' => 'COMPLETED', 'finished_at' => now()]);
-            SupportEvent::create(['conversation_id' => $locked->id, 'event_type' => $escalate ? 'AI_ESCALATED' : 'AI_REPLIED', 'actor_type' => 'AI', 'metadata' => ['ai_run_id' => $run->id, 'message_id' => $message->id]]);
+            SupportEvent::create(['conversation_id' => $locked->id, 'event_type' => $escalate ? 'AI_ESCALATED' : 'AI_REPLIED', 'actor_type' => 'AI', 'metadata' => ['ai_run_id' => $run->id, 'message_ids' => $messages->pluck('id')->all()]]);
         });
         app(SupportRealtimeService::class)->changed($conversationId, 'message.created');
+    }
+
+    private function responseSegments(string $content): array
+    {
+        $content = trim(preg_replace('/[ \t]+/u', ' ', $content) ?: $content);
+        if ($content === '') return [];
+
+        $segments = preg_split('/(?:(?<=[.!?])|(?<=[.!?]["”’]))\s+|\R+/u', $content, -1, PREG_SPLIT_NO_EMPTY) ?: [$content];
+
+        return collect($segments)
+            ->map(fn ($segment) => trim($segment))
+            ->filter()
+            ->values()
+            ->all();
     }
 
     private function pauseOnFailure(string $conversationId, AiRun $run): void

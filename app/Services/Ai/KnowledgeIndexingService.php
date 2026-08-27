@@ -37,7 +37,7 @@ class KnowledgeIndexingService
     private function chunks(string $content): array
     {
         $paragraphs = collect(preg_split('/\n\s*\n/', trim($content)) ?: [])
-            ->flatMap(fn ($paragraph) => $this->splitLongParagraph(trim($paragraph)))
+            ->flatMap(fn ($paragraph) => $this->sentenceSegments(trim($paragraph)))
             ->all();
         $chunks = []; $current = '';
         foreach ($paragraphs as $paragraph) {
@@ -48,17 +48,26 @@ class KnowledgeIndexingService
         return $chunks ?: [trim($content)];
     }
 
-    private function splitLongParagraph(string $paragraph): array
+    private function sentenceSegments(string $paragraph): array
     {
-        $parts = [];
-        while (mb_strlen($paragraph) > 1400) {
-            $candidate = mb_substr($paragraph, 0, 1400);
-            $breakAt = max(mb_strrpos($candidate, '. ') ?: 0, mb_strrpos($candidate, ' ') ?: 0);
-            if ($breakAt < 900) $breakAt = 1400;
-            $parts[] = trim(mb_substr($paragraph, 0, $breakAt));
-            $paragraph = trim(mb_substr($paragraph, $breakAt));
-        }
-        if ($paragraph !== '') $parts[] = $paragraph;
-        return $parts;
+        if ($paragraph === '') return [];
+
+        // Keep sentence-ending punctuation with its sentence and support
+        // multilingual text, closing quotes, and paragraph-final sentences.
+        $sentences = preg_split('/(?:(?<=[.!?])|(?<=[.!?]["”’]))\s+/u', $paragraph, -1, PREG_SPLIT_NO_EMPTY) ?: [$paragraph];
+
+        return collect($sentences)->flatMap(function ($sentence) {
+            $parts = [];
+            $sentence = trim($sentence);
+            while (mb_strlen($sentence) > 1400) {
+                $candidate = mb_substr($sentence, 0, 1400);
+                $breakAt = mb_strrpos($candidate, ' ') ?: 1400;
+                if ($breakAt < 900) $breakAt = 1400;
+                $parts[] = trim(mb_substr($sentence, 0, $breakAt));
+                $sentence = trim(mb_substr($sentence, $breakAt));
+            }
+            if ($sentence !== '') $parts[] = $sentence;
+            return $parts;
+        })->all();
     }
 }

@@ -146,12 +146,42 @@ class AiSupportConversationTest extends TestCase
         $greetingConversation = app(CreateSupportConversationAction::class)->execute([])['conversation'];
         $greeting = app(SendCustomerSupportMessageAction::class)->execute($greetingConversation, 'Hello, kumusta?', 'natural-1');
         app(\App\Services\Ai\AiResponseService::class)->respondTo($greeting);
-        $this->assertDatabaseHas('support_messages', ['conversation_id' => $greetingConversation->id, 'sender_type' => 'AI', 'content' => 'Hi! I’m here and happy to help. What can I help you with today?']);
+        $this->assertSame(
+            ['Hi!', 'I’m here and happy to help.', 'What can I help you with today?'],
+            SupportMessage::where('conversation_id', $greetingConversation->id)->where('sender_type', 'AI')->orderBy('id')->pluck('content')->all()
+        );
 
         $businessConversation = app(CreateSupportConversationAction::class)->execute([])['conversation'];
         $businessQuestion = app(SendCustomerSupportMessageAction::class)->execute($businessConversation, 'What is your return policy?', 'natural-2');
         app(\App\Services\Ai\AiResponseService::class)->respondTo($businessQuestion);
         $this->assertSame(SupportConversationMode::AI_PAUSED, $businessConversation->fresh()->mode);
         $this->assertDatabaseHas('support_events', ['conversation_id' => $businessConversation->id, 'event_type' => 'AI_ESCALATED']);
+    }
+
+    public function test_one_ai_call_is_persisted_as_ordered_sentence_bubbles(): void
+    {
+        Queue::fake();
+        $provider = new class implements AiProvider {
+            public int $calls = 0;
+            public function generate(string $systemInstruction, array $messages, int $maxOutputTokens): array
+            {
+                $this->calls++;
+                return ['text' => 'Sure boss! Available ni in black. Ganahan ka regular or oversized?', 'prompt_tokens' => 10, 'completion_tokens' => 14];
+            }
+            public function embed(string $text, string $taskType = 'RETRIEVAL_DOCUMENT'): array { return [1.0, 0.0]; }
+            public function name(): string { return 'fake'; }
+        };
+        $this->app->instance(AiProvider::class, $provider);
+
+        $conversation = app(CreateSupportConversationAction::class)->execute([])['conversation'];
+        $trigger = app(SendCustomerSupportMessageAction::class)->execute($conversation, 'Naa moy black boss?', 'segments-1');
+        app(\App\Services\Ai\AiResponseService::class)->respondTo($trigger);
+
+        $this->assertSame(1, $provider->calls);
+        $this->assertSame(
+            ['Sure boss!', 'Available ni in black.', 'Ganahan ka regular or oversized?'],
+            SupportMessage::where('conversation_id', $conversation->id)->where('sender_type', 'AI')->orderBy('id')->pluck('content')->all()
+        );
+        $this->assertDatabaseCount('ai_runs', 1);
     }
 }

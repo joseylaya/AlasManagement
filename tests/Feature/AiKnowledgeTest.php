@@ -44,4 +44,27 @@ class AiKnowledgeTest extends TestCase
         $document->update(['status' => 'DISABLED']);
         $this->assertSame([], app(KnowledgeRetrievalService::class)->retrieve('return policy'));
     }
+
+    public function test_long_knowledge_is_segmented_on_sentence_boundaries(): void
+    {
+        $base = AiKnowledgeBase::create(['name' => 'ALAS Support']);
+        $sentences = collect(range(1, 12))->map(fn ($number) => "Sentence {$number} ".str_repeat('contains useful product details ', 8).'.');
+        $document = AiKnowledgeDocument::create([
+            'knowledge_base_id' => $base->id,
+            'title' => 'Product guide',
+            'content' => $sentences->implode(' '),
+            'status' => 'DRAFT',
+        ]);
+
+        app(KnowledgeIndexingService::class)->index($document);
+
+        $chunks = $document->chunks()->orderBy('chunk_index')->pluck('content');
+        $this->assertGreaterThan(1, $chunks->count());
+        $chunks->each(function ($chunk) {
+            $this->assertLessThanOrEqual(1400, mb_strlen($chunk));
+            $this->assertMatchesRegularExpression('/\.$/u', $chunk);
+        });
+        $normalize = fn ($value) => preg_replace('/\s+/u', ' ', trim($value));
+        $this->assertSame($normalize($sentences->implode(' ')), $normalize($chunks->implode(' ')));
+    }
 }
