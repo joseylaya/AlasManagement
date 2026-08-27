@@ -1,0 +1,25 @@
+<?php
+
+return [
+    'debounce_ms' => (int) env('AI_CHAT_DEBOUNCE_MS', 3000),
+    'max_batch_wait_ms' => (int) env('AI_CHAT_MAX_BATCH_WAIT_MS', 8000),
+    'conversation_concurrency' => (int) env('AI_CHAT_CONVERSATION_CONCURRENCY', 1),
+    'global_concurrency' => (int) env('AI_CHAT_GLOBAL_CONCURRENCY', 3),
+    'max_message_chars' => (int) env('AI_CHAT_MAX_MESSAGE_CHARS', 2000),
+    'rate_short_limit' => (int) env('AI_CHAT_RATE_SHORT_LIMIT', 8),
+    'rate_short_window_seconds' => (int) env('AI_CHAT_RATE_SHORT_WINDOW_SEC', 30),
+    'rate_long_limit' => (int) env('AI_CHAT_RATE_LONG_LIMIT', 20),
+    'rate_long_window_seconds' => (int) env('AI_CHAT_RATE_LONG_WINDOW_SEC', 300),
+    'duplicate_window_seconds' => (int) env('AI_CHAT_DUPLICATE_WINDOW_SEC', 10),
+    'burst_limit' => (int) env('AI_CHAT_BURST_LIMIT', 5),
+    'burst_window_seconds' => (int) env('AI_CHAT_BURST_WINDOW_SEC', 5),
+    'max_output_tokens' => (int) env('AI_CHAT_MAX_OUTPUT_TOKENS', 250),
+    'history_messages' => (int) env('AI_CHAT_HISTORY_MESSAGES', 6),
+    'rag_max_chunks' => (int) env('AI_CHAT_RAG_MAX_CHUNKS', 3),
+    'target_input_tokens' => (int) env('AI_CHAT_TARGET_INPUT_TOKENS', 2500),
+    'hard_input_tokens' => (int) env('AI_CHAT_HARD_INPUT_TOKENS', 3000),
+    'typing_base_ms' => (int) env('AI_CHAT_TYPING_BASE_MS', 800),
+    'typing_per_character_ms' => (int) env('AI_CHAT_TYPING_PER_CHAR_MS', 15),
+    'typing_max_ms' => (int) env('AI_CHAT_TYPING_MAX_MS', 5000),
+    'lock_seconds' => (int) env('AI_CHAT_LOCK_SECONDS', 90),
+];

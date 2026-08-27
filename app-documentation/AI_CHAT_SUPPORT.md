@@ -2,6 +2,7 @@
 
 **Status:** V1 implemented
 **Source specification:** `MD_FILES/ALAS_AI_CHAT_SUPPORT.md`
+**Queue specification:** `alas-ecom/ALAS_AI_CHAT_QUEUE_AND_ANTI_SPAM_PLAN.md`
 **Last updated:** 2026-08-27
 
 ## Architecture
@@ -12,7 +13,7 @@ Guest ownership uses a random 64-character token stored only as a SHA-256 hash i
 
 Supabase Realtime Broadcast sends signal-only events on a conversation-specific topic. Message content remains in PostgreSQL and clients refetch it through the authorized API. The storefront also performs a slow authoritative refetch while open so missed broadcasts and reconnects cannot lose messages. Realtime failure never blocks message persistence.
 
-While a new customer message is queued or its AI run is `PROCESSING`, the storefront displays an accessible three-dot typing bubble. The pending state comes from the authoritative conversation API, survives refetch/reconnection, stops on reply/failure/takeover, and respects reduced-motion preferences.
+While a customer batch is `DEBOUNCING`, `QUEUED`, `PROCESSING`, or `TYPING_DELAY`, the storefront displays an accessible three-dot typing bubble. The pending state comes from the authoritative conversation API, survives refetch/reconnection, stops on reply/failure/takeover, and respects reduced-motion preferences.
 
 ## Conversation behavior
 
@@ -21,7 +22,7 @@ While a new customer message is queued or its AI run is `PROCESSING`, the storef
 - A manual admin reply atomically takes over before the reply is saved.
 - Takeover, return-to-AI, resolution, AI replies, escalation, and failures create support audit events.
 - Return to AI does not process old messages. Only a newly persisted customer message dispatches an AI run.
-- Customer message `client_message_id` and AI run `trigger_message_id` uniqueness prevent duplicate replies.
+- Customer message `client_message_id`, AI batch `(conversation_id, last_message_id)`, and AI run `trigger_message_id` uniqueness prevent duplicate persistence and duplicate LLM calls.
 - The AI service locks and rechecks `conversation.mode` immediately before inserting its message. A result generated during human takeover is recorded as `DISCARDED_TAKEOVER` and is never delivered.
 
 ## AI and knowledge
@@ -47,6 +48,16 @@ Gemini provider/quota failures preserve the customer message, mark the AI run fa
 
 Chat generation uses the ordered `AI_MODELS` pool. A model that returns quota exhaustion (`429`), transient server/capacity errors (`5xx`), DNS/connect failures, timeouts, an empty response, or model unavailability is placed into a bounded local cooldown and the next configured stable text model is attempted immediately. Authentication and malformed-request errors stop immediately because rotating models cannot correct them. Successful AI runs record the model that actually answered. If the whole pool is unavailable, the normal human fallback behavior applies. When no active knowledge chunks exist, retrieval skips the embedding request entirely.
 
+## Queue, batching, and anti-spam
+
+`support_ai_jobs` is the durable AI-turn ledger. Every customer message is saved before any AI scheduling occurs. The first message creates one `DEBOUNCING` batch; continuation messages update its last-message boundary and reset the three-second quiet window, capped by an eight-second maximum batch wait. The delayed Laravel transport job is dispatched only once for that batch. Early or duplicate transport executions re-read the authoritative batch and release themselves without calling Gemini.
+
+Ready work is processed oldest-first. A database-backed cache lock permits one active generation per conversation, and numbered global locks cap simultaneous Gemini work across all queue workers. A generated response is stored temporarily as `TYPING_DELAY`, then a separate delayed publication job inserts and broadcasts the sentence bubbles. The generation worker and global LLM slot are therefore released before the human-like display delay.
+
+Customer messages remain intact even when normalized duplicates are removed from the batched prompt. Limits of 8 messages per 30 seconds and 20 per 5 minutes return a server-authored cooldown message without spending an LLM call. Oversized messages are rejected before persistence. The prompt builder uses 4–6 recent messages, an extractive summary of at most approximately 150 tokens, at most 3 knowledge chunks, a target input budget of 2,500 tokens, and a hard ordinary ceiling of 3,000 tokens.
+
+Takeover and resolution atomically mark all `DEBOUNCING`, `QUEUED`, `PROCESSING`, and `TYPING_DELAY` batches `CANCELLED`. Mode and batch state are checked before execution, before the provider call, before response persistence, and before realtime broadcast. If generation cannot be cancelled, its result is recorded as discarded and never reaches the customer.
+
 ## Access and security
 
 - All public writes pass through validated, rate-limited Laravel endpoints.
@@ -65,6 +76,27 @@ Run the Laravel queue continuously; customer messages are durable before AI work
 AI_API_KEY=
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
+
+AI_CHAT_DEBOUNCE_MS=3000
+AI_CHAT_MAX_BATCH_WAIT_MS=8000
+AI_CHAT_CONVERSATION_CONCURRENCY=1
+AI_CHAT_GLOBAL_CONCURRENCY=3
+AI_CHAT_MAX_MESSAGE_CHARS=2000
+AI_CHAT_RATE_SHORT_LIMIT=8
+AI_CHAT_RATE_SHORT_WINDOW_SEC=30
+AI_CHAT_RATE_LONG_LIMIT=20
+AI_CHAT_RATE_LONG_WINDOW_SEC=300
+AI_CHAT_DUPLICATE_WINDOW_SEC=10
+AI_CHAT_BURST_LIMIT=5
+AI_CHAT_BURST_WINDOW_SEC=5
+AI_CHAT_MAX_OUTPUT_TOKENS=250
+AI_CHAT_HISTORY_MESSAGES=6
+AI_CHAT_RAG_MAX_CHUNKS=3
+AI_CHAT_TARGET_INPUT_TOKENS=2500
+AI_CHAT_HARD_INPUT_TOKENS=3000
+AI_CHAT_TYPING_BASE_MS=800
+AI_CHAT_TYPING_PER_CHAR_MS=15
+AI_CHAT_TYPING_MAX_MS=5000
 ```
 
 The storefront needs its existing `ALAS_MANAGEMENT_URL` plus browser-safe `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for realtime signals. If the latter are absent, chat continues through authoritative refetching.

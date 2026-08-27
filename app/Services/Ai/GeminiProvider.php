@@ -3,9 +3,9 @@
 namespace App\Services\Ai;
 
 use App\Contracts\AiProvider;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 class GeminiProvider implements AiProvider
@@ -23,15 +23,18 @@ class GeminiProvider implements AiProvider
         ];
         $models = $this->models();
         $available = array_values(array_filter($models, fn ($model) => ! Cache::has($this->cooldownKey($model))));
-        if ($available === []) $available = [end($models)];
+        if ($available === []) {
+            throw new RuntimeException('All configured Gemini chat models are in cooldown.');
+        }
         $errors = [];
 
         foreach ($available as $model) {
             try {
                 $httpResponse = $this->client()->post($this->endpoint($model, 'generateContent'), $payload);
             } catch (ConnectionException $exception) {
-                $this->coolDown($model, 30);
+                $this->coolDown($model, 30, 'connection failure');
                 $errors[] = "{$model}: connection failure";
+
                 continue;
             }
 
@@ -41,21 +44,24 @@ class GeminiProvider implements AiProvider
                 if (is_string($text) && trim($text) !== '') {
                     return ['text' => trim($text), 'model' => $model, 'prompt_tokens' => data_get($response, 'usageMetadata.promptTokenCount'), 'completion_tokens' => data_get($response, 'usageMetadata.candidatesTokenCount')];
                 }
-                $this->coolDown($model, 15);
+                $this->coolDown($model, 15, 'empty response');
                 $errors[] = "{$model}: empty response";
+
                 continue;
             }
 
             if (in_array($httpResponse->status(), [429, 500, 502, 503, 504], true)) {
                 $retryAfter = max(30, min(300, (int) $httpResponse->header('Retry-After', $httpResponse->status() === 429 ? 60 : 30)));
-                $this->coolDown($model, $retryAfter);
+                $this->coolDown($model, $retryAfter, 'HTTP '.$httpResponse->status());
                 $errors[] = "{$model}: HTTP {$httpResponse->status()}";
+
                 continue;
             }
 
             if ($httpResponse->status() === 404) {
-                $this->coolDown($model, 3600);
+                $this->coolDown($model, 3600, 'model unavailable');
                 $errors[] = "{$model}: unavailable";
+
                 continue;
             }
 
@@ -75,16 +81,25 @@ class GeminiProvider implements AiProvider
             'outputDimensionality' => (int) config('services.ai.embedding_dimension', 1536),
         ])->throw()->json();
         $values = data_get($response, 'embedding.values');
-        if (! is_array($values) || $values === []) throw new RuntimeException('Gemini returned no embedding.');
+        if (! is_array($values) || $values === []) {
+            throw new RuntimeException('Gemini returned no embedding.');
+        }
+
         return array_map('floatval', $values);
     }
 
-    public function name(): string { return 'gemini'; }
+    public function name(): string
+    {
+        return 'gemini';
+    }
 
     private function client()
     {
         $key = config('services.ai.api_key');
-        if (! filled($key)) throw new RuntimeException('Gemini API key is not configured.');
+        if (! filled($key)) {
+            throw new RuntimeException('Gemini API key is not configured.');
+        }
+
         return Http::acceptJson()->withHeaders(['x-goog-api-key' => $key])->connectTimeout(5)->timeout((int) config('services.ai.timeout', 20));
     }
 
@@ -96,10 +111,28 @@ class GeminiProvider implements AiProvider
     private function models(): array
     {
         $configured = array_values(array_unique(array_filter(array_map('trim', explode(',', (string) config('services.ai.models'))))));
-        if ($configured !== []) return $configured;
+        if ($configured !== []) {
+            return $configured;
+        }
+
         return array_values(array_unique(array_filter([config('services.ai.model'), config('services.ai.fallback_model')])));
     }
 
-    private function cooldownKey(string $model): string { return 'ai:gemini:model-cooldown:'.sha1($model); }
-    private function coolDown(string $model, int $seconds): void { Cache::put($this->cooldownKey($model), true, now()->addSeconds($seconds)); }
+    private function cooldownKey(string $model): string
+    {
+        return 'ai:gemini:model-cooldown:'.sha1($model);
+    }
+
+    private function coolDown(string $model, int $seconds, string $reason): void
+    {
+        $stateKey = $this->cooldownKey($model).':state';
+        $state = Cache::get($stateKey, ['failure_count' => 0]);
+        Cache::put($stateKey, [
+            'model' => $model,
+            'cooldown_until' => now()->addSeconds($seconds)->toIso8601String(),
+            'failure_count' => ((int) ($state['failure_count'] ?? 0)) + 1,
+            'last_failure_reason' => $reason,
+        ], now()->addDay());
+        Cache::put($this->cooldownKey($model), true, now()->addSeconds($seconds));
+    }
 }

@@ -8,8 +8,9 @@ use App\Models\SupportAssignment;
 use App\Models\SupportConversation;
 use App\Models\SupportEvent;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
+use App\Services\Ai\SupportAiBatchService;
 use App\Services\Support\SupportRealtimeService;
+use Illuminate\Support\Facades\DB;
 
 class TakeOverSupportConversationAction
 {
@@ -21,9 +22,12 @@ class TakeOverSupportConversationAction
             $locked->update(['mode' => SupportConversationMode::HUMAN_ACTIVE, 'status' => SupportConversationStatus::OPEN, 'assigned_admin_id' => $admin->id, 'taken_over_at' => now()]);
             SupportAssignment::create(['conversation_id' => $locked->id, 'admin_id' => $admin->id, 'assigned_by' => $admin->id, 'assigned_at' => now()]);
             SupportEvent::create(['conversation_id' => $locked->id, 'event_type' => 'HUMAN_TAKEOVER', 'actor_type' => 'ADMIN', 'actor_id' => $admin->id]);
+
             return $locked->fresh();
         });
+        app(SupportAiBatchService::class)->cancelConversation($conversation->id);
         app(SupportRealtimeService::class)->changed($conversation->id, 'conversation.mode_changed');
+
         return $result;
     }
 }

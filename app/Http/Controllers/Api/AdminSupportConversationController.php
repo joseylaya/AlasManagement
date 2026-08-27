@@ -10,6 +10,7 @@ use App\Enums\SupportConversationStatus;
 use App\Http\Controllers\Controller;
 use App\Models\SupportConversation;
 use App\Models\SupportEvent;
+use App\Services\Ai\SupportAiBatchService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,12 +20,17 @@ class AdminSupportConversationController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = SupportConversation::query()->with('customer:id,display_name,email')->with(['messages' => fn ($q) => $q->orderByDesc('id')->limit(1)])->orderByDesc('last_message_at');
-        if ($request->filled('mode')) $query->where('mode', $request->string('mode'));
-        if ($request->filled('status')) $query->where('status', $request->string('status'));
+        if ($request->filled('mode')) {
+            $query->where('mode', $request->string('mode'));
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status'));
+        }
         if ($request->filled('search')) {
             $term = '%'.$request->string('search').'%';
             $query->where(fn ($q) => $q->whereHas('customer', fn ($customer) => $customer->where('display_name', 'like', $term)->orWhere('email', 'like', $term))->orWhereHas('messages', fn ($message) => $message->where('content', 'like', $term)));
         }
+
         return response()->json($query->paginate(30));
     }
 
@@ -43,6 +49,7 @@ class AdminSupportConversationController extends Controller
     public function send(Request $request, SupportConversation $conversation, SendAdminSupportMessageAction $action): JsonResponse
     {
         $data = $request->validate(['content' => ['required', 'string', 'max:2000']]);
+
         return response()->json(['data' => $action->execute($conversation, $request->user(), trim($data['content']))], 201);
     }
 
@@ -62,8 +69,11 @@ class AdminSupportConversationController extends Controller
             $locked = SupportConversation::query()->lockForUpdate()->findOrFail($conversation->id);
             $locked->update(['mode' => SupportConversationMode::RESOLVED, 'status' => SupportConversationStatus::RESOLVED, 'resolved_at' => now()]);
             SupportEvent::create(['conversation_id' => $locked->id, 'event_type' => 'CONVERSATION_RESOLVED', 'actor_type' => 'ADMIN', 'actor_id' => $request->user()->id]);
+
             return $locked->fresh();
         });
+        app(SupportAiBatchService::class)->cancelConversation($conversation->id, 'CONVERSATION_RESOLVED');
+
         return response()->json(['data' => $result]);
     }
 }

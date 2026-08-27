@@ -18,9 +18,33 @@ class SupportConversation extends Model
         return ['mode' => SupportConversationMode::class, 'status' => SupportConversationStatus::class, 'context' => 'array', 'last_message_at' => 'datetime', 'last_customer_message_at' => 'datetime', 'last_admin_message_at' => 'datetime', 'last_ai_message_at' => 'datetime', 'taken_over_at' => 'datetime', 'ai_resumed_at' => 'datetime', 'resolved_at' => 'datetime'];
     }
 
-    public function customer() { return $this->belongsTo(SupportCustomer::class); }
-    public function messages() { return $this->hasMany(SupportMessage::class, 'conversation_id'); }
-    public function assignedAdmin() { return $this->belongsTo(User::class, 'assigned_admin_id'); }
-    public function events() { return $this->hasMany(SupportEvent::class, 'conversation_id'); }
-    public function assignments() { return $this->hasMany(SupportAssignment::class, 'conversation_id'); }
+    public function customer()
+    {
+        return $this->belongsTo(SupportCustomer::class);
+    }
+
+    public function messages()
+    {
+        return $this->hasMany(SupportMessage::class, 'conversation_id');
+    }
+
+    public function assignedAdmin()
+    {
+        return $this->belongsTo(User::class, 'assigned_admin_id');
+    }
+
+    public function events()
+    {
+        return $this->hasMany(SupportEvent::class, 'conversation_id');
+    }
+
+    public function assignments()
+    {
+        return $this->hasMany(SupportAssignment::class, 'conversation_id');
+    }
+
+    public function aiJobs()
+    {
+        return $this->hasMany(SupportAiJob::class, 'conversation_id');
+    }
 }
