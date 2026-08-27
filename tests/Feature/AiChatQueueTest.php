@@ -295,6 +295,29 @@ class AiChatQueueTest extends TestCase
         $this->assertSame('TYPING_DELAY', $first->fresh()->status);
     }
 
+    public function test_stale_active_job_is_failed_so_it_cannot_block_the_queue_forever(): void
+    {
+        Queue::fake();
+        config()->set('ai_chat.stale_job_seconds', 60);
+        config()->set('ai_chat.conversation_concurrency', 0);
+
+        $oldConversation = app(CreateSupportConversationAction::class)->execute([])['conversation'];
+        app(SendCustomerSupportMessageAction::class)->execute($oldConversation, 'old', 'stale-1');
+        $stale = SupportAiJob::sole();
+        $stale->timestamps = false;
+        $stale->forceFill(['updated_at' => now()->subMinutes(2)])->saveQuietly();
+
+        $newConversation = app(CreateSupportConversationAction::class)->execute([])['conversation'];
+        app(SendCustomerSupportMessageAction::class)->execute($newConversation, 'new', 'stale-2');
+        $current = SupportAiJob::whereKeyNot($stale->id)->sole();
+        $current->update(['ready_at' => now()->subSecond()]);
+
+        (new GenerateSupportAiResponse($current->id))->withFakeQueueInteractions()->handle(app(AiResponseService::class));
+
+        $this->assertSame('FAILED', $stale->fresh()->status);
+        $this->assertSame('STALE_JOB_RECOVERED', $stale->fresh()->error_code);
+    }
+
     public function test_global_llm_limit_keeps_ready_work_queued_until_a_slot_is_free(): void
     {
         Queue::fake();

@@ -58,11 +58,15 @@ class SupportConversationController extends Controller
     {
         $latestCustomerMessage = $conversation->messages()->where('sender_type', 'CUSTOMER')->orderByDesc('id')->first();
         $isNewAfterResume = ! $conversation->ai_resumed_at || ($latestCustomerMessage?->created_at?->greaterThan($conversation->ai_resumed_at) ?? false);
+        $activeAiJob = SupportAiJob::query()->where('conversation_id', $conversation->id)
+            ->whereIn('status', ['DEBOUNCING', 'QUEUED', 'PROCESSING', 'TYPING_DELAY'])
+            ->latest('created_at')
+            ->first();
         $aiPending = $conversation->mode->value === 'AI_ACTIVE'
             && $latestCustomerMessage
             && $isNewAfterResume
-            && SupportAiJob::query()->where('conversation_id', $conversation->id)->whereIn('status', ['DEBOUNCING', 'QUEUED', 'PROCESSING', 'TYPING_DELAY'])->exists();
+            && $activeAiJob;
 
-        return ['id' => $conversation->id, 'mode' => $conversation->mode->value, 'status' => $conversation->status->value, 'ai_pending' => (bool) $aiPending, 'context' => $conversation->context, 'last_message_at' => $conversation->last_message_at, 'messages' => $conversation->relationLoaded('messages') ? $conversation->messages : []];
+        return ['id' => $conversation->id, 'mode' => $conversation->mode->value, 'status' => $conversation->status->value, 'ai_pending' => (bool) $aiPending, 'ai_status' => $aiPending ? $activeAiJob?->status : null, 'context' => $conversation->context, 'last_message_at' => $conversation->last_message_at, 'messages' => $conversation->relationLoaded('messages') ? $conversation->messages : []];
     }
 }

@@ -22,6 +22,8 @@ class GenerateSupportAiResponse implements ShouldQueue
 
     public function handle(AiResponseService $service): void
     {
+        $this->recoverStaleJobs();
+
         $batch = SupportAiJob::find($this->supportAiJobId);
         if (! $batch || ! in_array($batch->status, ['DEBOUNCING', 'QUEUED'], true)) {
             return;
@@ -83,6 +85,21 @@ class GenerateSupportAiResponse implements ShouldQueue
             $globalLock->release();
             $conversationLock->release();
         }
+    }
+
+    private function recoverStaleJobs(): void
+    {
+        $staleAfter = max(60, (int) config('ai_chat.stale_job_seconds', 300));
+
+        SupportAiJob::query()
+            ->whereIn('status', ['DEBOUNCING', 'QUEUED', 'PROCESSING', 'TYPING_DELAY'])
+            ->where('updated_at', '<', now()->subSeconds($staleAfter))
+            ->update([
+                'status' => 'FAILED',
+                'finished_at' => now(),
+                'error_code' => 'STALE_JOB_RECOVERED',
+                'error_message' => 'The queue worker stopped before this AI job completed.',
+            ]);
     }
 
     private function hasEarlierTurn(SupportAiJob $batch): bool

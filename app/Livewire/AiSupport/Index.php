@@ -27,6 +27,7 @@ class Index extends Component
     public string $knowledgeTitle = '';
     public string $knowledgeContent = '';
     public string $knowledgeCategory = '';
+    public ?string $editingKnowledgeId = null;
 
     public function mount(): void { abort_unless(auth()->check(), 403); }
     public function selectConversation(string $id): void { $this->selectedConversationId = $id; SupportConversation::whereKey($id)->update(['admin_unread_count' => 0]); }
@@ -39,11 +40,21 @@ class Index extends Component
     {
         abort_unless(auth()->user()->isOwner() || auth()->user()->isManager(), 403);
         $this->validate(['knowledgeTitle' => 'required|string|max:255', 'knowledgeContent' => 'required|string|max:100000', 'knowledgeCategory' => 'nullable|string|max:100']);
-        $base = AiKnowledgeBase::firstOrCreate(['name' => 'ALAS Support'], ['status' => 'ACTIVE', 'created_by' => auth()->id(), 'updated_by' => auth()->id()]);
-        $document = AiKnowledgeDocument::create(['knowledge_base_id' => $base->id, 'title' => $this->knowledgeTitle, 'content' => $this->knowledgeContent, 'category' => $this->knowledgeCategory ?: null, 'source_type' => 'MANUAL', 'status' => 'DRAFT', 'created_by' => auth()->id(), 'updated_by' => auth()->id()]);
-        $indexer->index($document); $this->reset('knowledgeTitle', 'knowledgeContent', 'knowledgeCategory'); session()->flash('success', 'Knowledge indexed and activated.');
+        $document = $this->editingKnowledgeId
+            ? DB::transaction(function () {
+                $previous = AiKnowledgeDocument::lockForUpdate()->findOrFail($this->editingKnowledgeId);
+                return AiKnowledgeDocument::create(['knowledge_base_id' => $previous->knowledge_base_id, 'previous_version_id' => $previous->id, 'title' => $this->knowledgeTitle, 'content' => $this->knowledgeContent, 'category' => $this->knowledgeCategory ?: null, 'source_type' => $previous->source_type, 'version' => $previous->version + 1, 'status' => 'DRAFT', 'created_by' => auth()->id(), 'updated_by' => auth()->id()]);
+            })
+            : AiKnowledgeDocument::create(['knowledge_base_id' => AiKnowledgeBase::firstOrCreate(['name' => 'ALAS Support'], ['status' => 'ACTIVE', 'created_by' => auth()->id(), 'updated_by' => auth()->id()])->id, 'title' => $this->knowledgeTitle, 'content' => $this->knowledgeContent, 'category' => $this->knowledgeCategory ?: null, 'source_type' => 'MANUAL', 'status' => 'DRAFT', 'created_by' => auth()->id(), 'updated_by' => auth()->id()]);
+        $indexer->index($document);
+        $wasEditing = (bool) $this->editingKnowledgeId;
+        $this->reset('knowledgeTitle', 'knowledgeContent', 'knowledgeCategory', 'editingKnowledgeId');
+        session()->flash('success', $wasEditing ? 'Knowledge updated, re-indexed, and activated as a new version.' : 'Knowledge indexed and activated.');
     }
-    public function disableKnowledge(string $id): void { abort_unless(auth()->user()->isOwner() || auth()->user()->isManager(), 403); AiKnowledgeDocument::whereKey($id)->update(['status' => 'DISABLED', 'updated_by' => auth()->id()]); }
+    public function editKnowledge(string $id): void { abort_unless(auth()->user()->isOwner() || auth()->user()->isManager(), 403); $document = AiKnowledgeDocument::findOrFail($id); $this->editingKnowledgeId = $document->id; $this->knowledgeTitle = $document->title; $this->knowledgeContent = $document->content; $this->knowledgeCategory = $document->category ?: ''; }
+    public function cancelKnowledgeEdit(): void { $this->reset('knowledgeTitle', 'knowledgeContent', 'knowledgeCategory', 'editingKnowledgeId'); }
+    public function disableKnowledge(string $id): void { abort_unless(auth()->user()->isOwner() || auth()->user()->isManager(), 403); AiKnowledgeDocument::whereKey($id)->update(['status' => 'DISABLED', 'updated_by' => auth()->id()]); session()->flash('success', 'Knowledge deactivated. AI will no longer use it.'); }
+    public function activateKnowledge(string $id): void { abort_unless(auth()->user()->isOwner() || auth()->user()->isManager(), 403); $document = AiKnowledgeDocument::findOrFail($id); abort_unless($document->indexed_at && $document->chunks()->exists(), 422, 'This knowledge must be indexed before it can be activated.'); $document->update(['status' => 'ACTIVE', 'updated_by' => auth()->id()]); session()->flash('success', 'Knowledge reactivated.'); }
     public function toggleAi(): void { abort_unless(auth()->user()->isOwner(), 403); $setting = AiSetting::firstOrFail(); $setting->update(['enabled' => ! $setting->enabled, 'updated_by' => auth()->id()]); }
 
     public function render()
