@@ -16,9 +16,9 @@ return new class extends Migration
             $table->string('provider')->default('gemini');
             $table->string('model')->default('gemini-3.7-flash');
             $table->string('embedding_model')->default('gemini-embedding-2');
-            $table->unsignedSmallInteger('max_output_tokens')->default(500);
-            $table->unsignedSmallInteger('max_knowledge_results')->default(5);
-            $table->unsignedSmallInteger('max_recent_messages')->default(20);
+            $table->unsignedSmallInteger('max_output_tokens')->default(250);
+            $table->unsignedSmallInteger('max_knowledge_results')->default(3);
+            $table->unsignedSmallInteger('max_recent_messages')->default(6);
             $table->unsignedSmallInteger('provider_timeout_seconds')->default(20);
             $table->text('welcome_message')->nullable();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();

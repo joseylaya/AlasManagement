@@ -36,7 +36,9 @@ class KnowledgeIndexingService
 
     private function chunks(string $content): array
     {
-        $paragraphs = preg_split('/\n\s*\n/', trim($content)) ?: [];
+        $paragraphs = collect(preg_split('/\n\s*\n/', trim($content)) ?: [])
+            ->flatMap(fn ($paragraph) => $this->splitLongParagraph(trim($paragraph)))
+            ->all();
         $chunks = []; $current = '';
         foreach ($paragraphs as $paragraph) {
             if (mb_strlen($current.'\n\n'.$paragraph) > 1400 && $current !== '') { $chunks[] = trim($current); $current = ''; }
@@ -44,5 +46,19 @@ class KnowledgeIndexingService
         }
         if ($current !== '') $chunks[] = trim($current);
         return $chunks ?: [trim($content)];
+    }
+
+    private function splitLongParagraph(string $paragraph): array
+    {
+        $parts = [];
+        while (mb_strlen($paragraph) > 1400) {
+            $candidate = mb_substr($paragraph, 0, 1400);
+            $breakAt = max(mb_strrpos($candidate, '. ') ?: 0, mb_strrpos($candidate, ' ') ?: 0);
+            if ($breakAt < 900) $breakAt = 1400;
+            $parts[] = trim(mb_substr($paragraph, 0, $breakAt));
+            $paragraph = trim(mb_substr($paragraph, $breakAt));
+        }
+        if ($paragraph !== '') $parts[] = $paragraph;
+        return $parts;
     }
 }

@@ -2,7 +2,7 @@
 
 **Status:** V1 implemented
 **Source specification:** `MD_FILES/ALAS_AI_CHAT_SUPPORT.md`
-**Last updated:** 2026-08-26
+**Last updated:** 2026-08-27
 
 ## Architecture
 
@@ -40,6 +40,8 @@ EMBEDDING_DIMENSION=1536
 Knowledge is versioned and moves through `DRAFT` → `PROCESSING` → `ACTIVE` or `FAILED`. Updating creates a new version; the previous active version is archived only after the new version indexes successfully. Disabled knowledge is excluded from retrieval. PostgreSQL uses pgvector with an HNSW cosine index; SQLite tests use the JSON representation and application-side cosine calculation.
 
 The model receives only recent conversation messages, relevant active knowledge, and minimal verified live-tool results. Live products/inventory/prices are queried from management tables. Order details are queried only when the support customer is linked to the authorized Laravel user. Missing, conflicting, or unverifiable business data is escalated instead of guessed. Knowledge is not required for safe conversational turns such as greetings, thanks, clarification, and general support guidance; Gemini may answer those naturally but is explicitly prohibited from introducing ALAS-specific facts without a verified source.
+
+Chat generation is tuned for concise customer support: temperature `0.5`, at most `250` output tokens, Gemini thinking level `LOW`, 4–6 recent messages (configured at 6), an extractive earlier-conversation summary capped at approximately 150 tokens, and up to 3 retrieved knowledge chunks. Knowledge chunks target roughly 250–400 tokens. The application context target is approximately 1,500–2,500 tokens excluding the protected system instruction. The canonical system instruction is stored in `private function systemPrompt(): string.md` and loaded server-side.
 
 Gemini provider/quota failures preserve the customer message, mark the AI run failed, move the conversation to `AI_PAUSED` / `NEEDS_ATTENTION`, and leave manual chat available. The global kill switch stops automatic AI while preserving customer/admin messaging.
 

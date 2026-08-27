@@ -15,7 +15,11 @@ class GeminiProvider implements AiProvider
         $payload = [
             'system_instruction' => ['parts' => [['text' => $systemInstruction]]],
             'contents' => array_map(fn ($message) => ['role' => $message['role'] === 'assistant' ? 'model' : 'user', 'parts' => [['text' => $message['content']]]], $messages),
-            'generationConfig' => ['temperature' => 0.2, 'maxOutputTokens' => $maxOutputTokens],
+            'generationConfig' => [
+                'temperature' => 0.5,
+                'maxOutputTokens' => min(250, $maxOutputTokens),
+                'thinkingConfig' => ['thinkingLevel' => 'LOW'],
+            ],
         ];
         $models = $this->models();
         $available = array_values(array_filter($models, fn ($model) => ! Cache::has($this->cooldownKey($model))));

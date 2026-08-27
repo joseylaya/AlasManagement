@@ -9,18 +9,24 @@ use Tests\TestCase;
 
 class GeminiProviderTest extends TestCase
 {
-    public function test_it_uses_the_next_model_when_the_first_reaches_its_limit(): void
+    public function test_chat_generation_uses_the_configured_response_and_thinking_limits(): void
     {
+        config()->set('services.ai.api_key', 'test-key');
+        config()->set('services.ai.models', 'gemini-3.7-flash');
         Cache::flush();
-        config(['services.ai.api_key' => 'test-key', 'services.ai.models' => 'model-one,model-two', 'services.ai.timeout' => 1]);
-        Http::fakeSequence()
-            ->push(['error' => ['message' => 'quota']], 429, ['Retry-After' => '60'])
-            ->push(['candidates' => [['content' => ['parts' => [['text' => 'Hello from fallback']]]]], 'usageMetadata' => ['promptTokenCount' => 4, 'candidatesTokenCount' => 3]], 200);
+        Http::fake([
+            '*' => Http::response([
+                'candidates' => [['content' => ['parts' => [['text' => 'Hello!']]]]],
+                'usageMetadata' => ['promptTokenCount' => 10, 'candidatesTokenCount' => 2],
+            ]),
+        ]);
 
-        $result = app(GeminiProvider::class)->generate('System', [['role' => 'user', 'content' => 'Hello']], 100);
+        app(GeminiProvider::class)->generate('System prompt', [['role' => 'user', 'content' => 'Hi']], 500);
 
-        $this->assertSame('model-two', $result['model']);
-        $this->assertSame('Hello from fallback', $result['text']);
-        Http::assertSentCount(2);
+        Http::assertSent(function ($request) {
+            return data_get($request->data(), 'generationConfig.maxOutputTokens') === 250
+                && data_get($request->data(), 'generationConfig.temperature') === 0.5
+                && data_get($request->data(), 'generationConfig.thinkingConfig.thinkingLevel') === 'LOW';
+        });
     }
 }
