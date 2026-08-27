@@ -11,6 +11,7 @@ class LiveAlasContextService
     public function forMessage(SupportConversation $conversation, string $message): array
     {
         $facts = [];
+        if ($compact = $this->commerceContext($conversation)) $facts[] = ['type' => 'COMMERCE_CONTEXT', 'id' => $conversation->id, 'text' => $compact];
         $productId = data_get($conversation->context, 'variant_id') ?: data_get($conversation->context, 'product_id');
         if ($productId) {
             $product = Product::query()->with('inventory')->where('status', 'active')->find($productId);
@@ -32,6 +33,19 @@ class LiveAlasContextService
             });
         }
         return $facts;
+    }
+
+    private function commerceContext(SupportConversation $conversation): ?string
+    {
+        $context = $conversation->context ?? [];
+        if (! data_get($context, 'active_product_id')) return null;
+        return collect([
+            'Active product='.data_get($context, 'active_product_id'),
+            'variant='.data_get($context, 'active_variant_id', 'none'),
+            'last_action='.data_get($context, 'last_product_action', 'none'),
+            'action_status='.data_get($context, 'last_product_action_status', 'none'),
+            'cart_quantity='.data_get($context, 'active_cart_quantity', 'none'),
+        ])->implode('; ').'. This is verified application context; do not claim a cart change unless action_status is SUCCESS.';
     }
 
     private function productFact(Product $product): array

@@ -184,4 +184,51 @@ class AiSupportConversationTest extends TestCase
         );
         $this->assertDatabaseCount('ai_runs', 1);
     }
+
+    public function test_chat_commerce_action_revalidates_live_variant_and_is_idempotently_audited(): void
+    {
+        $owner = User::factory()->create(['role' => 'owner']);
+        $variant = CreateProductAction::execute(['product_name' => 'ALAS Oversized Tee', 'storefront_name' => 'ALAS Oversized Tee', 'sku' => 'CHAT-TEE-M', 'category' => 'T-Shirts', 'color' => 'Black', 'size' => 'M', 'selling_price' => 699, 'cost_price' => 300, 'initial_stock' => 2], $owner);
+        $created = app(CreateSupportConversationAction::class)->execute([]);
+        $payload = ['action' => 'ADD_TO_CART', 'product_id' => $variant->storefront_product_id, 'variant_id' => $variant->id, 'quantity' => 1, 'displayed_price_centavos' => 69900, 'idempotency_key' => 'chat-card-add-1'];
+
+        $this->withToken($created['token'])->postJson("/api/v1/support/conversations/{$created['conversation']->id}/commerce-actions", $payload)
+            ->assertOk()->assertJsonPath('data.status', 'SUCCESS')->assertJsonPath('data.variant_id', (string) $variant->id);
+        $this->withToken($created['token'])->postJson("/api/v1/support/conversations/{$created['conversation']->id}/commerce-actions", $payload)
+            ->assertOk()->assertJsonPath('idempotent', true);
+
+        $this->assertDatabaseCount('support_message_actions', 1);
+        $this->assertDatabaseHas('support_messages', ['conversation_id' => $created['conversation']->id, 'content_type' => 'ACTION_RESULT']);
+        $this->assertDatabaseHas('support_events', ['conversation_id' => $created['conversation']->id, 'event_type' => 'COMMERCE_ADD_TO_CART']);
+    }
+
+    public function test_chat_commerce_action_rejects_stale_price_without_claiming_cart_success(): void
+    {
+        $owner = User::factory()->create(['role' => 'owner']);
+        $variant = CreateProductAction::execute(['product_name' => 'ALAS Tee', 'storefront_name' => 'ALAS Tee', 'sku' => 'CHAT-PRICE', 'category' => 'T-Shirts', 'selling_price' => 750, 'cost_price' => 300, 'initial_stock' => 2], $owner);
+        $created = app(CreateSupportConversationAction::class)->execute([]);
+
+        $this->withToken($created['token'])->postJson("/api/v1/support/conversations/{$created['conversation']->id}/commerce-actions", ['action' => 'ADD_TO_CART', 'product_id' => $variant->storefront_product_id, 'variant_id' => $variant->id, 'quantity' => 1, 'displayed_price_centavos' => 69900, 'idempotency_key' => 'chat-price-change'])
+            ->assertOk()->assertJsonPath('data.status', 'PRICE_CHANGED');
+        $this->assertDatabaseHas('support_messages', ['conversation_id' => $created['conversation']->id, 'content_type' => 'ACTION_RESULT', 'content' => 'The price has changed. Please review the updated price before continuing.']);
+    }
+
+    public function test_verified_product_recommendation_is_saved_as_a_structured_chat_card(): void
+    {
+        Queue::fake();
+        $owner = User::factory()->create(['role' => 'owner']);
+        $variant = CreateProductAction::execute(['product_name' => 'ALAS Heavy Tee', 'storefront_name' => 'ALAS Heavy Tee', 'sku' => 'CARD-TEE', 'category' => 'T-Shirts', 'selling_price' => 699, 'cost_price' => 300, 'initial_stock' => 3], $owner);
+        $this->app->instance(AiProvider::class, new class implements AiProvider {
+            public function generate(string $systemInstruction, array $messages, int $maxOutputTokens): array { return ['text' => 'Kani boss, nice ni for a clean fit.', 'prompt_tokens' => 1, 'completion_tokens' => 1]; }
+            public function embed(string $text, string $taskType = 'RETRIEVAL_DOCUMENT'): array { return [1.0, 0.0]; }
+            public function name(): string { return 'fake'; }
+        });
+        $conversation = app(CreateSupportConversationAction::class)->execute([])['conversation'];
+        $trigger = app(SendCustomerSupportMessageAction::class)->execute($conversation, 'Unsa nice nga tshirt?', 'card-1');
+        app(\App\Services\Ai\AiResponseService::class)->respondTo($trigger);
+
+        $this->assertDatabaseHas('support_messages', ['conversation_id' => $conversation->id, 'content_type' => 'PRODUCT_CARD']);
+        $card = SupportMessage::where('conversation_id', $conversation->id)->where('content_type', 'PRODUCT_CARD')->firstOrFail();
+        $this->assertSame((string) $variant->storefront_product_id, data_get($card->payload, 'products.0.product_id'));
+    }
 }

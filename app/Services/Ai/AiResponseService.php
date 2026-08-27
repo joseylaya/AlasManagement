@@ -22,7 +22,7 @@ use Throwable;
 
 class AiResponseService
 {
-    public function __construct(private AiProvider $provider, private KnowledgeRetrievalService $retrieval, private LiveAlasContextService $liveContext) {}
+    public function __construct(private AiProvider $provider, private KnowledgeRetrievalService $retrieval, private LiveAlasContextService $liveContext, private SupportProductRecommendationService $recommendations) {}
 
     /** Compatibility entry point for direct service tests and maintenance tools. */
     public function respondTo(SupportMessage $trigger): void
@@ -187,6 +187,7 @@ class AiResponseService
             if ($final) {
                 $run?->update(['status' => 'COMPLETED', 'finished_at' => now()]);
                 SupportEvent::create(['conversation_id' => $conversation->id, 'event_type' => $lockedBatch->escalate_after_reply ? 'AI_ESCALATED' : 'AI_REPLIED', 'actor_type' => 'AI', 'metadata' => ['ai_run_id' => $run?->id, 'ai_job_id' => $lockedBatch->id, 'published_segment_count' => $publishedCount, 'last_message_id' => $message->id]]);
+                $this->createProductCard($conversation, $lockedBatch, $message);
             } elseif ($scheduleNext) {
                 PublishSupportAiResponse::dispatch($lockedBatch->id)->delay(now()->addMilliseconds(max(0, config('ai_chat.segment_delay_ms'))));
             }
@@ -197,6 +198,16 @@ class AiResponseService
         if ($published && $mode !== SupportConversationMode::HUMAN_ACTIVE) {
             app(SupportRealtimeService::class)->changed($batch->conversation_id, 'message.created');
         }
+    }
+
+    private function createProductCard(SupportConversation $conversation, SupportAiJob $batch, SupportMessage $reply): void
+    {
+        $customerText = $this->batchMessages($batch)->pluck('content')->implode("\n");
+        $products = $this->recommendations->recommend($conversation, $customerText);
+        if ($products === []) return;
+        $type = count($products) === 1 ? 'PRODUCT_CARD' : 'PRODUCT_CAROUSEL';
+        SupportMessage::create(['conversation_id' => $conversation->id, 'sender_type' => 'AI', 'content_type' => $type, 'content' => '', 'payload' => ['products' => $products, 'reply_to_message_id' => $reply->id], 'is_ai_generated' => true, 'delivery_status' => 'SENT']);
+        $conversation->update(['context' => array_merge($conversation->context ?? [], ['active_product_id' => $products[0]['product_id'], 'active_variant_id' => $products[0]['variant_id'], 'last_product_card_message_id' => $reply->id])]);
     }
 
     private function stageResponse(SupportAiJob $batch, AiRun $run, string $content, bool $escalate, bool $immediate, ?string $model = null): void

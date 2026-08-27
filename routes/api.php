@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\StorefrontCheckoutController;
 use App\Http\Controllers\Api\StorefrontShippingController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\SupportConversationController;
+use App\Http\Controllers\Api\SupportCommerceController;
 
 Route::prefix('storefront')->group(function () {
     Route::get('/products', [StorefrontCatalogController::class, 'index'])->name('api.storefront.products.index');
@@ -28,4 +29,5 @@ Route::prefix('v1/support')->middleware('throttle:30,1')->group(function () {
     Route::get('/conversations/{conversation}', [SupportConversationController::class, 'show']);
     Route::get('/conversations/{conversation}/messages', [SupportConversationController::class, 'messages']);
     Route::post('/conversations/{conversation}/messages', [SupportConversationController::class, 'send']);
+    Route::post('/conversations/{conversation}/commerce-actions', [SupportCommerceController::class, 'action'])->middleware('throttle:12,1');
 });
