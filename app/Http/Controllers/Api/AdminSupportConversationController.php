@@ -18,7 +18,7 @@ class AdminSupportConversationController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = SupportConversation::query()->with('customer:id,display_name,email')->with(['messages' => fn ($q) => $q->orderByDesc('created_at')->orderByDesc('id')->limit(1)])->orderByDesc('last_message_at');
+        $query = SupportConversation::query()->with('customer:id,display_name,email')->with(['messages' => fn ($q) => $q->orderByDesc('id')->limit(1)])->orderByDesc('last_message_at');
         if ($request->filled('mode')) $query->where('mode', $request->string('mode'));
         if ($request->filled('status')) $query->where('status', $request->string('status'));
         if ($request->filled('search')) {
@@ -34,7 +34,7 @@ class AdminSupportConversationController extends Controller
         $conversation->load([
             'customer',
             'assignedAdmin:id,name',
-            'messages' => fn ($query) => $query->orderBy('created_at')->orderBy('id')->with('senderUser:id,name'),
+            'messages' => fn ($query) => $query->orderBy('id')->with('senderUser:id,name'),
         ]);
 
         return response()->json(['data' => $conversation]);

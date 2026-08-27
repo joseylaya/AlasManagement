@@ -49,7 +49,7 @@ class AiResponseService
                 return;
             }
 
-            $history = $conversation->messages()->where('id', '!=', $trigger->id)->orderByDesc('created_at')->orderByDesc('id')->limit($settings->max_recent_messages)->get()->reverse()->map(fn ($message) => ['role' => in_array($message->sender_type, ['AI', 'ADMIN']) ? 'assistant' : 'user', 'content' => $message->content])->values()->all();
+            $history = $conversation->messages()->where('id', '!=', $trigger->id)->orderByDesc('id')->limit($settings->max_recent_messages)->get()->reverse()->map(fn ($message) => ['role' => in_array($message->sender_type, ['AI', 'ADMIN']) ? 'assistant' : 'user', 'content' => $message->content])->values()->all();
             $context = collect($liveFacts)->pluck('text')->merge(collect($knowledge)->map(fn ($source) => 'Approved knowledge: '.$source['chunk']->content))->implode("\n\n");
             if ($context === '') {
                 $context = 'No verified ALAS business facts are available for this message. You may converse naturally, acknowledge the customer, ask a helpful follow-up question, or explain what support can help with. Do not state or infer any ALAS-specific fact.';

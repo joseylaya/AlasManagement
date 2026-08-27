@@ -28,6 +28,12 @@ services:
       - .env.postgres
       - .env.paymongo
     command: php artisan queue:work --sleep=1 --tries=3 --max-time=3600
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_TIMEZONE: Asia/Manila
+      APP_URL: https://www.jmgaming.site
+      LOG_LEVEL: warning
     volumes:
       - ./database:/var/www/html/database
       - ./storage:/var/www/html/storage
@@ -42,6 +48,12 @@ services:
       - .env.postgres
       - .env.paymongo
     command: php artisan schedule:work
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_TIMEZONE: Asia/Manila
+      APP_URL: https://www.jmgaming.site
+      LOG_LEVEL: warning
     volumes:
       - ./database:/var/www/html/database
       - ./storage:/var/www/html/storage

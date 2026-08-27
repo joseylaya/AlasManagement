@@ -52,11 +52,11 @@ class AiSupportConversationTest extends TestCase
         $timestamp = now()->startOfSecond();
 
         foreach ([
-            ['00000000-0000-7000-8000-000000000001', 'CUSTOMER', 'First question'],
-            ['00000000-0000-7000-8000-000000000002', 'AI', 'First answer'],
-            ['00000000-0000-7000-8000-000000000003', 'CUSTOMER', 'Second question'],
-            ['00000000-0000-7000-8000-000000000004', 'AI', 'Second answer'],
-        ] as [$id, $sender, $content]) {
+            ['00000000-0000-7000-8000-000000000001', 'CUSTOMER', 'First question', 0],
+            ['00000000-0000-7000-8000-000000000002', 'AI', 'First answer', -8],
+            ['00000000-0000-7000-8000-000000000003', 'CUSTOMER', 'Second question', 0],
+            ['00000000-0000-7000-8000-000000000004', 'AI', 'Second answer', -8],
+        ] as [$id, $sender, $content, $hourOffset]) {
             SupportMessage::forceCreate([
                 'id' => $id,
                 'conversation_id' => $conversation->id,
@@ -64,8 +64,8 @@ class AiSupportConversationTest extends TestCase
                 'content_type' => 'TEXT',
                 'content' => $content,
                 'delivery_status' => 'SENT',
-                'created_at' => $timestamp,
-                'updated_at' => $timestamp,
+                'created_at' => $timestamp->copy()->addHours($hourOffset),
+                'updated_at' => $timestamp->copy()->addHours($hourOffset),
             ]);
         }
 
